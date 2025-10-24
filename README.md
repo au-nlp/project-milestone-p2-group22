@@ -9,3 +9,9 @@ The group members: Berg, Mikkel Skafsgaard; Jehøj-Krogager, Nikolaj; Yildirim, 
 The dataset being used: SMOL
 
 Department of Computer Science, Aarhus University, 2025.
+
+We have provided a `env.yaml` to setup a proper Python environment to use in this project. To create it run
+
+```sh
+$ conda env create -f env.yaml
+```
