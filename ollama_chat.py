@@ -8,12 +8,17 @@ class OllamaChat:
     Supports system, user, and assistant messages with conversation memory.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, host: str = "localhost:11434"):
         """
         Initialize the chat with a specific Ollama model.
         """
         self.model_name = model_name
+        self.host = host
         self.history: List[Dict[str, str]] = []
+    
+    def __str__(self):
+        lines = [f"{msg['role'].upper()}: {msg['content']}\n" for msg in self.history]
+        return "\n".join(lines)
 
     def add_message(self, role: str, content: str):
         """
