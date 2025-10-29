@@ -23,8 +23,9 @@ LABEL_RANK = {
 
 JSON_PATH = "smoldoc-factuality-ratings.json"
 
-def load_topic_ratings(json_path=JSON_PATH):
-    data = json.loads(pathlib.Path(json_path).read_text())
+def load_topic_ratings(data=None, json_path=JSON_PATH):
+    if data is None:
+        data = json.loads(pathlib.Path(json_path).read_text())
     rows = []
     for topic_key, ann_dict in data.items():
         # Extract a numeric id if present (e.g., "topic_183__xyz" -> 183)
