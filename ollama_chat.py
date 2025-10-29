@@ -1,5 +1,4 @@
 import ollama
-from typing import List, Dict
 
 
 class OllamaChat:
@@ -14,8 +13,9 @@ class OllamaChat:
         """
         self.model_name = model_name
         self.host = host
-        self.history: List[Dict[str, str]] = []
-    
+        self.history: list[dict[str, str]] = []
+        self.client = ollama.Client(host=self.host)
+
     def __str__(self):
         lines = [f"{msg['role'].upper()}: {msg['content']}\n" for msg in self.history]
         return "\n".join(lines)
@@ -38,7 +38,7 @@ class OllamaChat:
         self.add_message("user", user_message)
 
         # Send all messages (including system & assistant) to the model
-        response = ollama.chat(model=self.model_name, messages=self.history)
+        response = self.client.chat(model=self.model_name, messages=self.history)
 
         # Get model's reply
         reply = response["message"]["content"]
@@ -52,6 +52,6 @@ class OllamaChat:
         """Clear the conversation history."""
         self.history = []
 
-    def get_history(self) -> List[Dict[str, str]]:
+    def get_history(self) -> list[dict[str, str]]:
         """Return the current message history."""
         return self.history.copy()
