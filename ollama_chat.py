@@ -1,7 +1,9 @@
 import ollama
 
+from llm_chat import LLMChat
 
-class OllamaChat:
+
+class OllamaChat(LLMChat):
     """
     A flexible chat wrapper for the Ollama Python API.
     Supports system, user, and assistant messages with conversation memory.
