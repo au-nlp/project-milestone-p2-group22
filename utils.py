@@ -95,40 +95,35 @@ LABEL_RANK = {
 
 JSON_PATH = "smoldoc-factuality-ratings.json"
 
-def load_topic_ratings(json_data=None, json_path=JSON_PATH):
+def load_factuality_ratings(json_data=None, json_path=JSON_PATH):
     if json_data is None:
         json_data = json.loads(pathlib.Path(json_path).read_text())
     rows = []
-    for topic_key, ann_dict in json_data.items():
-        # Extract a numeric id if present (e.g., "topic_183__xyz" -> 183)
-        m = re.match(r"topic_(\d+)", topic_key)
-        topic_id = int(m.group(1)) if m else None
-
+    for id, ann_dict in json_data.items():
         # Normalize annotator entries
-        trip = {}
+        factuality_ratings = {}
         for k in ("1", "2", "3"):
             if k in ann_dict and isinstance(ann_dict[k], list) and len(ann_dict[k]) >= 1:
                 label = ann_dict[k][0]
                 notes = ann_dict[k][1] if len(ann_dict[k]) > 1 else ""
             else:
                 label, notes = None, ""
-            trip[k] = (label, notes)
+            factuality_ratings[k] = (label, notes)
 
-        labels = [trip[k][0] for k in ("1","2","3") if trip[k][0]]
+        labels = [factuality_ratings[k][0] for k in ("1","2","3") if factuality_ratings[k][0]]
         # Majority label (fall back to first non-null)
         majority_label = Counter(labels).most_common(1)[0][0] if labels else None
         # Worst label by severity (max rank)
         worst_label = max(labels, key=lambda L: LABEL_RANK.get(L, 0)) if labels else None
 
         rows.append({
-            "topic_key": topic_key,
-            "topic_id": topic_id,
-            "annotator_1_label": trip["1"][0],
-            "annotator_1_notes": trip["1"][1],
-            "annotator_2_label": trip["2"][0],
-            "annotator_2_notes": trip["2"][1],
-            "annotator_3_label": trip["3"][0],
-            "annotator_3_notes": trip["3"][1],
+            "id": id,
+            "annotator_1_label": factuality_ratings["1"][0],
+            "annotator_1_notes": factuality_ratings["1"][1],
+            "annotator_2_label": factuality_ratings["2"][0],
+            "annotator_2_notes": factuality_ratings["2"][1],
+            "annotator_3_label": factuality_ratings["3"][0],
+            "annotator_3_notes": factuality_ratings["3"][1],
             "majority_label": majority_label,
             "worst_label": worst_label,
             "worst_label_rank": LABEL_RANK.get(worst_label, 0),
