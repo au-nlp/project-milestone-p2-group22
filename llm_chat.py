@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+import ollama
+
 
 class LLMChatter(ABC):
     """Abstract base class for LLM chat models."""
@@ -13,8 +15,8 @@ class LLMChatter(ABC):
 class OllamaChatter(LLMChatter):
     """Ollama LLM chatter implementation."""
 
-    def __init__(self, client, model_name: str):
-        self.client = client
+    def __init__(self, model_name: str, host: str = "localhost:11434"):
+        self.client = ollama.Client(host=host)
         self.model_name = model_name
 
     def chat(self, messages: list[dict[str, str]]) -> str:
@@ -30,10 +32,14 @@ class AzureOpenAIChatter(LLMChatter):
         self.deployment_name = deployment_name
 
     def chat(self, messages: list[dict[str, str]]) -> str:
-        response = self.client.chat.deployment(
-            deployment_name=self.deployment_name, messages=messages
+        response = self.client.chat.completions.create(
+            model=self.deployment_name,
+            messages=messages,
+            max_completion_tokens=16384,
         )
-        return response["message"]["content"]
+
+        answer = response.choices[0].message.content
+        return answer
 
 
 class LLMChat:
