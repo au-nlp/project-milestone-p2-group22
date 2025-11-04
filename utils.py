@@ -1,15 +1,19 @@
-import os
-import shutil
-import requests
 import json
+import os
 import pathlib
+import shutil
 from collections import Counter
-from typing import List
-from datasets import load_dataset, load_from_disk, DatasetDict, Dataset
+from typing import Any, List
+
+import requests
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 
 dataset_name = "google/smol"
 
-def get_or_build_smoldoc(configs: List[str], save_path: str, overwrite: bool = False, verbose: bool = True) -> DatasetDict:
+
+def get_or_build_smoldoc(
+    configs: List[str], save_path: str, overwrite: bool = False, verbose: bool = True
+) -> DatasetDict:
     """
     Load a SmolDoc DatasetDict from disk if available; otherwise build from Hugging Face and save.
 
@@ -24,7 +28,9 @@ def get_or_build_smoldoc(configs: List[str], save_path: str, overwrite: bool = F
     """
     if os.path.exists(save_path) and not overwrite:
         if verbose:
-            print(f"📂 Found existing SmolDoc DatasetDict at {save_path}, loading from disk...")
+            print(
+                f"📂 Found existing SmolDoc DatasetDict at {save_path}, loading from disk..."
+            )
         return load_dataset_dict(save_path, verbose=verbose)
 
     if verbose:
@@ -39,7 +45,8 @@ def get_or_build_smoldoc(configs: List[str], save_path: str, overwrite: bool = F
 
 def list_smoldoc_configs():
     url = f"https://datasets-server.huggingface.co/splits?dataset={dataset_name}"
-    r = requests.get(url); r.raise_for_status()
+    r = requests.get(url)
+    r.raise_for_status()
     data = r.json()
     configs = sorted({item["config"] for item in data["splits"]})
     return [c for c in configs if c.lower().startswith("smoldoc__")]
@@ -56,6 +63,7 @@ LABEL_RANK = {
 
 JSON_PATH = "smoldoc-factuality-ratings.json"
 
+
 def load_factuality_ratings(json_data=None, json_path=JSON_PATH):
     if json_data is None:
         json_data = json.loads(pathlib.Path(json_path).read_text())
@@ -64,80 +72,49 @@ def load_factuality_ratings(json_data=None, json_path=JSON_PATH):
         # Normalize annotator entries
         factuality_ratings = {}
         for k in ("1", "2", "3"):
-            if k in ann_dict and isinstance(ann_dict[k], list) and len(ann_dict[k]) >= 1:
+            if (
+                k in ann_dict
+                and isinstance(ann_dict[k], list)
+                and len(ann_dict[k]) >= 1
+            ):
                 label = ann_dict[k][0]
                 notes = ann_dict[k][1] if len(ann_dict[k]) > 1 else ""
             else:
                 label, notes = None, ""
             factuality_ratings[k] = (label, notes)
 
-        labels = [factuality_ratings[annotator][0] for annotator in ("1","2","3") if factuality_ratings[annotator][0]]
+        labels = [
+            factuality_ratings[annotator][0]
+            for annotator in ("1", "2", "3")
+            if factuality_ratings[annotator][0]
+        ]
         # Majority label (fall back to first non-null)
         majority_label = Counter(labels).most_common(1)[0][0] if labels else None
         # Worst label by severity (max rank)
-        worst_label = max(labels, key=lambda L: LABEL_RANK.get(L, 0)) if labels else None
+        worst_label = (
+            max(labels, key=lambda L: LABEL_RANK.get(L, 0)) if labels else None
+        )
 
-        rows.append({
-            "id": id,
-            "annotator_1_label": factuality_ratings["1"][0],
-            "annotator_1_notes": factuality_ratings["1"][1],
-            "annotator_2_label": factuality_ratings["2"][0],
-            "annotator_2_notes": factuality_ratings["2"][1],
-            "annotator_3_label": factuality_ratings["3"][0],
-            "annotator_3_notes": factuality_ratings["3"][1],
-            "majority_label": majority_label,
-            "worst_label": worst_label,
-            "worst_label_rank": LABEL_RANK.get(worst_label, 0),
-        })
+        rows.append(
+            {
+                "id": id,
+                "annotator_1_label": factuality_ratings["1"][0],
+                "annotator_1_notes": factuality_ratings["1"][1],
+                "annotator_2_label": factuality_ratings["2"][0],
+                "annotator_2_notes": factuality_ratings["2"][1],
+                "annotator_3_label": factuality_ratings["3"][0],
+                "annotator_3_notes": factuality_ratings["3"][1],
+                "majority_label": majority_label,
+                "worst_label": worst_label,
+                "worst_label_rank": LABEL_RANK.get(worst_label, 0),
+            }
+        )
     return Dataset.from_list(rows)
 
-def get_smoldoc_factuality(data_dir: str = "data") -> dict:
-    """
-    Download (if needed) and load the SmolDoc factuality ratings dataset.
 
-    This function checks if the file `smoldoc-factuality-ratings.json`
-    exists in the specified directory (default: "data"). If not, it
-    downloads it from Hugging Face (`google/smol`) and saves it locally.
-
-    Args:
-        data_dir (str, optional): Directory where the file should be cached.
-            Defaults to "data".
-
-    Returns:
-        dict: Parsed JSON content from `smoldoc-factuality-ratings.json`.
-
-    Raises:
-        requests.exceptions.RequestException: If the download fails.
-        json.JSONDecodeError: If the file cannot be parsed as JSON.
-
-    Example:
-        >>> from utils import get_smoldoc_factuality
-        >>> data = get_smoldoc_factuality()
-        >>> import pandas as pd
-        >>> df = pd.DataFrame(data)
-        >>> df.head()
-    """
-    os.makedirs(data_dir, exist_ok=True)
-    file_path = os.path.join(data_dir, "smoldoc-factuality-ratings.json")
-    url = "https://huggingface.co/datasets/google/smol/resolve/main/smoldoc-factuality-ratings.json"
-
-    if not os.path.exists(file_path):
-        print(f"Downloading SmolDoc factuality ratings to {file_path} ...")
-        resp = requests.get(url)
-        resp.raise_for_status()
-        data = resp.json()
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        print("Download complete.")
-    else:
-        print(f"Using cached file: {file_path}")
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-    return data
-
-def load_smoldoc_configs(dataset_name: str, configs: List[str], verbose: bool = True) -> DatasetDict:
+def load_smoldoc_configs(
+    dataset_name: str, configs: List[str], verbose: bool = True
+) -> DatasetDict:
     """Load multiple SmolDoc configurations from Hugging Face into a DatasetDict."""
     flat: dict[str, Dataset] = {}
     for cfg in configs:
@@ -147,7 +124,9 @@ def load_smoldoc_configs(dataset_name: str, configs: List[str], verbose: bool = 
         flat[cfg] = ds
     merged = DatasetDict(flat)  # keys are configs; values are Dataset (not DatasetDict)
     if verbose:
-        print(f"✅ Loaded {len(merged)} configs into a flattened DatasetDict (values are Dataset).")
+        print(
+            f"✅ Loaded {len(merged)} configs into a flattened DatasetDict (values are Dataset)."
+        )
     return merged
 
 
@@ -157,7 +136,9 @@ def save_dataset_dict(ds_dict: DatasetDict, path: str, overwrite: bool = False) 
         raise TypeError(f"Expected DatasetDict, got {type(ds_dict)}")
     if os.path.exists(path):
         if not overwrite:
-            raise FileExistsError(f"Path '{path}' already exists. Use overwrite=True to replace it.")
+            raise FileExistsError(
+                f"Path '{path}' already exists. Use overwrite=True to replace it."
+            )
         shutil.rmtree(path)
     ds_dict.save_to_disk(path)
     print(f"💾 Saved DatasetDict with {len(ds_dict)} configs → {path}")
