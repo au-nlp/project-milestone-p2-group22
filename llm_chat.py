@@ -36,6 +36,12 @@ class AzureOpenAIChatter(LLMChatter):
         azure_endpoint = env.get("AZURE_ENDPOINT")
         api_version = "2024-12-01-preview"
 
+        if azure_api_key is None or azure_endpoint is None:
+            raise ValueError(
+                "Azure API key or endpoint not found in .env file. "
+                "Please set AZURE_KEY and AZURE_ENDPOINT."
+            )
+
         self.client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,

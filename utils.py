@@ -1,9 +1,10 @@
 import os
 import json
+from typing import Any
 import requests
 
 
-def get_smoldoc_factuality(data_dir: str = "data") -> dict:
+def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
     """
     Download (if needed) and load the SmolDoc factuality ratings dataset.
 

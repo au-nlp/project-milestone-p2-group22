@@ -1,5 +1,5 @@
 class Dotenv:
-    def __init__(self, filepath):
+    def __init__(self, filepath: str):
         self.filepath = filepath
         self.variables = self.load_dotenv()
 
@@ -11,5 +11,5 @@ class Dotenv:
                 if line.strip() and not line.startswith("#")
             )
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: str | None = None) -> str | None:
         return self.variables.get(key, default)
