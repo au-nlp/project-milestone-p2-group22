@@ -18,13 +18,17 @@ class LLMChatter(ABC):
 class OllamaChatter(LLMChatter):
     """Ollama LLM chatter implementation."""
 
-    def __init__(self, model_name: str, host: str = "localhost:11434"):
+    def __init__(self, model_name: str, host: str = "localhost:11434", think: bool = False):
+        self.think = think
         self.client = ollama.Client(host=host)
         self.model_name = model_name
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
-        response = self.client.chat(model=self.model_name, messages=messages)
-        return response["message"]["content"]
+    def chat(self, messages: list[dict[str, str]]) -> (str, str | None):
+        response = self.client.chat(model=self.model_name, messages=messages, think=self.think)
+        thoughts = None
+        if self.think:
+            thoughts = response["message"]["thinking"]
+        return response["message"]["content"], thoughts
 
 
 class AzureOpenAIChatter(LLMChatter):
@@ -110,7 +114,7 @@ class LLMChat(LLMChatInterface):
             raise ValueError("Role must be 'system', 'user', or 'assistant'")
         self.message_history.append({"role": role, "content": content})
 
-    def chat(self, user_message: str) -> str:
+    def chat(self, user_message: str) -> (str, str | None):
         """
         Add a user message, send the full history to the model,
         and append the model's reply to the history.
@@ -119,12 +123,12 @@ class LLMChat(LLMChatInterface):
         self.add_message("user", user_message)
 
         # Send all messages (including system & assistant) to the model
-        assistant_response = self.chatter.chat(messages=self.message_history)
+        assistant_response, thoughts = self.chatter.chat(messages=self.message_history)
 
         # Add assistant's reply to history
         self.add_message("assistant", assistant_response)
 
-        return assistant_response
+        return assistant_response, thoughts
 
     def reset(self):
         """Clear the conversation history."""
@@ -138,33 +142,35 @@ class LLMChat(LLMChatInterface):
 class CachedLLMChat(LLMChatInterface):
     """A chat wrapper that caches responses from the LLM."""
 
-    def __init__(self, base_chat: LLMChat, cache_file_path: str = None):
+    def __init__(self, base_chat: LLMChat, cache_file_path: str = "data/conversations.pkl"):
         """Initialize the cached chat with a specific LLM chat instance.
 
         Args:
             base_chat (LLMChat): The LLM chat instance to wrap.
-            cache_file_path (str, optional): Path to save/load the cache. Defaults to None.
+            cache_file_path (str, optional): Path to save/load the cache. Defaults to 'data/conversations.pkl'.
                                              Then it only caches in memory and for the session."""
         self.base_chat = base_chat
         self.response_cache = {}
         self.cache_file_path = cache_file_path
         self.load_cache()
 
-    def load_cache(self):
+    def load_cache(self, path: str = None):
         """Load the cache from the specified path."""
-        if self.cache_file_path:
+        cache_file_path = path or self.cache_file_path
+        if cache_file_path is not None:
             try:
-                with open(self.cache_file_path, "rb") as cache_file:
+                with open(cache_file_path, "rb") as cache_file:
                     import pickle
 
                     self.response_cache = pickle.load(cache_file)
             except FileNotFoundError:
                 self.response_cache = {}
 
-    def save_cache(self):
+    def save_cache(self, path: str = None):
         """Save the cache to the specified path."""
-        if self.cache_file_path:
-            with open(self.cache_file_path, "wb") as cache_file:
+        cache_file_path = path or self.cache_file_path
+        if cache_file_path is not None:
+            with open(cache_file_path, "wb") as cache_file:
                 import pickle
 
                 pickle.dump(self.response_cache, cache_file)
