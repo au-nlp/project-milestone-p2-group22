@@ -154,21 +154,23 @@ class CachedLLMChat(LLMChatInterface):
         self.cache_file_path = cache_file_path
         self.load_cache()
 
-    def load_cache(self):
+    def load_cache(self, path: str = None):
         """Load the cache from the specified path."""
-        if self.cache_file_path is not None:
+        cache_file_path = path or self.cache_file_path
+        if cache_file_path is not None:
             try:
-                with open(self.cache_file_path, "rb") as cache_file:
+                with open(cache_file_path, "rb") as cache_file:
                     import pickle
 
                     self.response_cache = pickle.load(cache_file)
             except FileNotFoundError:
                 self.response_cache = {}
 
-    def save_cache(self):
+    def save_cache(self, path: str = None):
         """Save the cache to the specified path."""
-        if self.cache_file_path is not None:
-            with open(self.cache_file_path, "wb") as cache_file:
+        cache_file_path = path or self.cache_file_path
+        if cache_file_path is not None:
+            with open(cache_file_path, "wb") as cache_file:
                 import pickle
 
                 pickle.dump(self.response_cache, cache_file)
