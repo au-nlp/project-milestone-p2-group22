@@ -14,7 +14,6 @@ def get_or_build_smoldoc(configs: List[str], save_path: str, overwrite: bool = F
     Load a SmolDoc DatasetDict from disk if available; otherwise build from Hugging Face and save.
 
     Args:
-        dataset_name: The Hugging Face dataset name (e.g. "smoldoc").
         configs: List of SmolDoc configuration names.
         save_path: Directory where the DatasetDict will be stored.
         overwrite: If True, forces re-download even if existing data is found.
