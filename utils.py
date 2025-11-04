@@ -10,6 +10,58 @@ from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 
 dataset_name = "google/smol"
 
+def get_extended_datasets(save_path: str = "data/smoldoc_datasets" , overwrite: bool = False) -> DatasetDict:
+    """
+    Builds all SmolDoc datasets and extends them with annotation notes per annotator
+    :param save_path: Directory where the DatasetDict will be stored.
+    :param overwrite: If True, forces re-download even if existing data is found.
+    :return: The SmolDoc datasets with annotations notes per annotator.
+    """
+    datasets_dict = get_or_build_smoldoc(
+        configs=list_smoldoc_configs(),
+        save_path=save_path,
+        overwrite=overwrite
+    )
+
+    return append_factuality_notes(datasets_dict)
+
+
+def append_factuality_notes(datasets_dict: DatasetDict) -> DatasetDict:
+    """
+     Extends the SmolDoc datasets with annotation notes per annotator
+
+    :param datasets_dict: All SmolDoc datasets stored in a Dictionary.
+    :return: The SmolDoc datasets with annotations notes per annotator.
+    """
+    json_ratings = get_smoldoc_factuality()
+    factuality_ds = load_factuality_ratings(json_data=json_ratings)
+
+    keep_cols = [
+        'annotator_1_label', 'annotator_1_notes',
+        'annotator_2_label', 'annotator_2_notes',
+        'annotator_3_label', 'annotator_3_notes'
+    ]
+
+    # Build lookup dict: id -> annotations
+    annot_fields_by_id = {
+        k: {col: v for col, v in zip(keep_cols, vals)}
+        for k, *vals in zip(
+            factuality_ds["id"],
+            *[factuality_ds[col] for col in keep_cols]
+        )
+    }
+
+    def _join_annotations(batch):
+        ids = batch["id"]
+        # Vectorized per-column build
+        return {
+            col: [annot_fields_by_id[i][col] if i in annot_fields_by_id else None for i in ids]
+            for col in keep_cols
+        }
+
+    # Join all configs
+    return datasets_dict.map(_join_annotations, batched=True)
+
 
 def get_or_build_smoldoc(
     configs: List[str], save_path: str, overwrite: bool = False, verbose: bool = True
@@ -154,3 +206,49 @@ def load_dataset_dict(path: str, verbose: bool = True) -> DatasetDict:
     if verbose:
         print(f"📂 Loaded DatasetDict from {path} with {len(ds)} configs.")
     return ds
+
+def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
+    """
+    Download (if needed) and load the SmolDoc factuality ratings dataset.
+
+    This function checks if the file `smoldoc-factuality-ratings.json`
+    exists in the specified directory (default: "data"). If not, it
+    downloads it from Hugging Face (`google/smol`) and saves it locally.
+
+    Args:
+        data_dir (str, optional): Directory where the file should be cached.
+            Defaults to "data".
+
+    Returns:
+        dict: Parsed JSON content from `smoldoc-factuality-ratings.json`.
+
+    Raises:
+        requests.exceptions.RequestException: If the download fails.
+        json.JSONDecodeError: If the file cannot be parsed as JSON.
+
+    Example:
+        >>> from utils import get_smoldoc_factuality
+        >>> data = get_smoldoc_factuality()
+        >>> import pandas as pd
+        >>> df = pd.DataFrame(data)
+        >>> df.head()
+    """
+    os.makedirs(data_dir, exist_ok=True)
+    file_path = os.path.join(data_dir, "smoldoc-factuality-ratings.json")
+    url = "https://huggingface.co/datasets/google/smol/resolve/main/smoldoc-factuality-ratings.json"
+
+    if not os.path.exists(file_path):
+        print(f"Downloading SmolDoc factuality ratings to {file_path} ...")
+        resp = requests.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print("Download complete.")
+    else:
+        print(f"Using cached file: {file_path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+    return data
