@@ -1,9 +1,16 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import ollama
 from openai import AzureOpenAI
 
 from dotenv import Dotenv
+
+
+class ChatRoles(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
 
 
 class LLMChatter(ABC):
@@ -65,7 +72,7 @@ class LLMChatInterface(ABC):
     """Abstract base class for LLM chat interfaces."""
 
     @abstractmethod
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: ChatRoles, content: str):
         """Add a message to the conversation history."""
         pass
 
@@ -101,14 +108,13 @@ class LLMChat(LLMChatInterface):
         ]
         return "\n".join(formatted_messages)
 
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: ChatRoles, content: str):
         """
         Add a message manually to the conversation.
         Role must be one of: 'system', 'user', or 'assistant'.
         """
-        if role not in {"system", "user", "assistant"}:
-            raise ValueError("Role must be 'system', 'user', or 'assistant'")
-        self.message_history.append({"role": role, "content": content})
+        role_str = role.value
+        self.message_history.append({"role": role_str, "content": content})
 
     def chat(self, user_message: str) -> str:
         """
@@ -116,13 +122,13 @@ class LLMChat(LLMChatInterface):
         and append the model's reply to the history.
         """
         # Add user's message
-        self.add_message("user", user_message)
+        self.add_message(ChatRoles.USER, user_message)
 
         # Send all messages (including system & assistant) to the model
         assistant_response = self.chatter.chat(messages=self.message_history)
 
         # Add assistant's reply to history
-        self.add_message("assistant", assistant_response)
+        self.add_message(ChatRoles.ASSISTANT, assistant_response)
 
         return assistant_response
 
@@ -138,7 +144,7 @@ class LLMChat(LLMChatInterface):
 class CachedLLMChat(LLMChatInterface):
     """A chat wrapper that caches responses from the LLM."""
 
-    def __init__(self, base_chat: LLMChat, cache_file_path: str = None):
+    def __init__(self, base_chat: LLMChat, cache_file_path: str | None = None):
         """Initialize the cached chat with a specific LLM chat instance.
 
         Args:
@@ -172,7 +178,7 @@ class CachedLLMChat(LLMChatInterface):
     def __str__(self):
         return self.base_chat.__str__()
 
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: ChatRoles, content: str):
         self.base_chat.add_message(role, content)
 
     def chat(self, user_message: str) -> str:
