@@ -15,16 +15,40 @@ class LLMChatter(ABC):
         pass
 
 
+def block_at_least_sec(n: int, start_time: float | None = None):
+    """Block execution for at least n seconds.
+
+    Args:
+        n (int): Maximum number of seconds to block.
+        start_time (float, optional): Start time to calculate elapsed time from. Defaults to None,
+        which means the current time is used and it will then block for n seconds.
+    """
+    import time
+
+    if start_time is None:
+        time.sleep(n)
+        return
+    current_time = time.time()
+    elapsed = current_time - start_time
+    if elapsed < n:
+        print(f"Rate limiting: sleeping for {n - elapsed:.0f} seconds...")
+        time.sleep(n - elapsed)
+
+
 class OllamaChatter(LLMChatter):
     """Ollama LLM chatter implementation."""
 
-    def __init__(self, model_name: str, host: str = "localhost:11434", think: bool = False):
+    def __init__(
+        self, model_name: str, host: str = "localhost:11434", think: bool = False
+    ):
         self.think = think
         self.client = ollama.Client(host=host)
         self.model_name = model_name
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
-        response = self.client.chat(model=self.model_name, messages=messages, think=self.think)
+        response = self.client.chat(
+            model=self.model_name, messages=messages, think=self.think
+        )
         thoughts = None
         if self.think:
             thoughts = response["message"]["thinking"]
@@ -34,7 +58,7 @@ class OllamaChatter(LLMChatter):
 class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
-    def __init__(self, deployment_name: str = "gpt-5-nano"):
+    def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
         env = Dotenv(".env")
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
@@ -53,8 +77,12 @@ class AzureOpenAIChatter(LLMChatter):
         )
 
         self.deployment_name = deployment_name
+        self.previous_query_time: float = 0
+        self.rate = rate
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        block_at_least_sec(int(60.0 / self.rate), self.previous_query_time)
+        self.previous_query_time = time.time()  # TODO here or after the API call?
         completion_response = self.client.chat.completions.create(
             model=self.deployment_name,
             messages=messages,
@@ -201,11 +229,11 @@ if __name__ == "__main__":
     # Example usage with Ollama
     ollama_chatter = OllamaChatter(model_name="gemma3:4b")
     ollama_chat = LLMChat(ollama_chatter)
-    print("Asking Ollama: Hello, how are you?")
-    ollama_response = ollama_chat.chat("Hello, how are you?")
+    print("Asking Ollama (gemma3:4b): Hello, how are you?")
+    ollama_response, _ = ollama_chat.chat("Hello, how are you?")
     print("Ollama response:", ollama_response)
 
-    # Example usage with Azure OpenAI with caching
+    # Example usage with Azure OpenAI (gpt-5-nano) with caching
     azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
     azure_chat = LLMChat(azure_chatter)
     cached_azure_chat = CachedLLMChat(azure_chat, "data/azure_cache.pkl")
@@ -215,14 +243,21 @@ if __name__ == "__main__":
     import time
 
     start_time = time.time()
-    first_response = cached_azure_chat.chat("Hello, how are you?")
+    first_response, _ = cached_azure_chat.chat("Hello, how are you?")
     first_duration = time.time() - start_time
     print("Azure OpenAI response:", first_response)
     print(f"Took {first_duration:.2f} seconds")
 
     print("\n\nAsking again to hit the cache:")
     start_time = time.time()
-    cached_response = cached_azure_chat.chat("Hello, how are you?")
+    cached_response, _ = cached_azure_chat.chat("Hello, how are you?")
+    cached_duration = time.time() - start_time
+    print("Azure OpenAI response:", cached_response)
+    print(f"Took {cached_duration:.2f} seconds")
+
+    print("\n\nAsking a new question to show rate limiting:")
+    start_time = time.time()
+    cached_response, _ = cached_azure_chat.chat("Hello, how are you? Part 2")
     cached_duration = time.time() - start_time
     print("Azure OpenAI response:", cached_response)
     print(f"Took {cached_duration:.2f} seconds")
