@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import ollama
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 
 from dotenv import Dotenv
 
@@ -18,13 +18,17 @@ class LLMChatter(ABC):
 class OllamaChatter(LLMChatter):
     """Ollama LLM chatter implementation."""
 
-    def __init__(self, model_name: str, host: str = "localhost:11434", think: bool = False):
+    def __init__(
+        self, model_name: str, host: str = "localhost:11434", think: bool = False
+    ):
         self.think = think
         self.client = ollama.Client(host=host)
         self.model_name = model_name
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
-        response = self.client.chat(model=self.model_name, messages=messages, think=self.think)
+        response = self.client.chat(
+            model=self.model_name, messages=messages, think=self.think
+        )
         thoughts = None
         if self.think:
             thoughts = response["message"]["thinking"]
@@ -63,6 +67,44 @@ class AzureOpenAIChatter(LLMChatter):
 
         assistant_message: str = completion_response.choices[0].message.content
         return assistant_message, None
+
+
+class OpenAIChatter(LLMChatter):
+    """Azure OpenAI LLM chatter implementation."""
+
+    def __init__(self, deployment_name: str = "gpt-5-nano"):
+        env = Dotenv(".env")
+        api_key = env.get("AZURE_KEY")
+        azure_endpoint = env.get("AZURE_ENDPOINT")
+
+        if api_key is None or azure_endpoint is None:
+            raise ValueError(
+                "Azure API key or endpoint not found in .env file. "
+                "Please set AZURE_KEY and AZURE_ENDPOINT."
+            )
+
+        endpoint = env.get("OPENAI_ENDPOINT")
+
+        self.client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
+
+        self.deployment_name = deployment_name
+
+    def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        response = self.client.responses.create(
+            model=self.deployment_name,
+            input=messages,
+            reasoning={"effort": "high", "summary": "detailed"},
+            max_output_tokens=16384,
+        )
+
+        assistant_message = response.output_text
+        reasoning_text = None
+        if getattr(response, "reasoning", None):
+            # response.reasoning can be an object or text depending on SDK
+            reasoning_text = getattr(response.reasoning, "content", None) or str(
+                response.reasoning
+            )
+        return assistant_message, reasoning_text
 
 
 class LLMChatInterface(ABC):
@@ -198,31 +240,61 @@ class CachedLLMChat(LLMChatInterface):
 
 
 if __name__ == "__main__":
-    # Example usage with Ollama
-    ollama_chatter = OllamaChatter(model_name="gemma3:4b")
-    ollama_chat = LLMChat(ollama_chatter)
-    print("Asking Ollama: Hello, how are you?")
-    ollama_response = ollama_chat.chat("Hello, how are you?")
-    print("Ollama response:", ollama_response)
+    print("This is a manual test of the LLM chat implementations.")
+    print("Make sure you have the .env file set up with your API keys and endpoints.")
+    print("What do you want to try? Ollama, Azure, OpenAI, or all?")
+    user_input = input("Type either 'ollama', 'azure', 'openai' or 'all': ")
+    if user_input.lower() in {"ollama", "all"}:
+        # Example usage with Ollama
+        ollama_chatter = OllamaChatter(model_name="gemma3:4b")
+        ollama_chat = LLMChat(ollama_chatter)
+        print("Asking Ollama: Hello, how are you?")
+        ollama_response = ollama_chat.chat("Hello, how are you?")
+        print("Ollama response:", ollama_response)
 
-    # Example usage with Azure OpenAI with caching
-    azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
-    azure_chat = LLMChat(azure_chatter)
-    cached_azure_chat = CachedLLMChat(azure_chat, "data/azure_cache.pkl")
+    if user_input.lower() in {"azure", "all"}:
+        # Example usage with Azure OpenAI with caching
+        azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
+        azure_chat = LLMChat(azure_chatter)
+        cached_azure_chat = CachedLLMChat(azure_chat, "data/azure_cache.pkl")
 
-    # Time to see caching in action
-    print("\n\nAsking Azure OpenAI the same question twice to see caching in action:")
-    import time
+        # Time to see caching in action
+        print(
+            "\n\nAsking Azure OpenAI the same question twice to see caching in action:"
+        )
+        import time
 
-    start_time = time.time()
-    first_response = cached_azure_chat.chat("Hello, how are you?")
-    first_duration = time.time() - start_time
-    print("Azure OpenAI response:", first_response)
-    print(f"Took {first_duration:.2f} seconds")
+        start_time = time.time()
+        first_response = cached_azure_chat.chat("Hello, how are you?")
+        first_duration = time.time() - start_time
+        print("Azure OpenAI response:", first_response)
+        print(f"Took {first_duration:.2f} seconds")
 
-    print("\n\nAsking again to hit the cache:")
-    start_time = time.time()
-    cached_response = cached_azure_chat.chat("Hello, how are you?")
-    cached_duration = time.time() - start_time
-    print("Azure OpenAI response:", cached_response)
-    print(f"Took {cached_duration:.2f} seconds")
+        print("\n\nAsking again to hit the cache:")
+        start_time = time.time()
+        cached_response = cached_azure_chat.chat("Hello, how are you?")
+        cached_duration = time.time() - start_time
+        print("Azure OpenAI response:", cached_response)
+        print(f"Took {cached_duration:.2f} seconds")
+
+    if user_input.lower() in {"openai", "all"}:
+        # Example usage with OpenAI
+        openai_chatter = OpenAIChatter(deployment_name="gpt-5-mini")
+        openai_chat = LLMChat(openai_chatter)
+
+        response, thoughts = openai_chat.chat(
+            (
+                "You are a highly logical assistant. Solve the following river crossing problem step by step, "
+                "explaining your reasoning at each stage. After reasoning, provide the final solution clearly.\n\n"
+                "Problem:\n"
+                "A farmer is on one side of a river with a wolf, a goat, and a cabbage. "
+                "He has a boat that can carry only himself plus one item at a time. "
+                "If left alone, the wolf will eat the goat, and the goat will eat the cabbage.\n\n"
+                "Instructions:\n"
+                "1. First, reason carefully about each move and explain why it is safe.\n"
+                "2. Clearly indicate the state of the riverbanks after each move.\n"
+                "3. Only after showing your detailed reasoning, provide the complete step-by-step solution.\n"
+            )
+        )
+        print("OpenAI response:", response)
+        print("OpenAI thoughts:", thoughts)
