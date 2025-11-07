@@ -15,6 +15,26 @@ class LLMChatter(ABC):
         pass
 
 
+def block_at_least_sec(n: int, start_time: float | None = None):
+    """Block execution for at least n seconds.
+
+    Args:
+        n (int): Maximum number of seconds to block.
+        start_time (float, optional): Start time to calculate elapsed time from. Defaults to None,
+        which means the current time is used and it will then block for n seconds.
+    """
+    import time
+
+    if start_time is None:
+        time.sleep(n)
+        return
+    current_time = time.time()
+    elapsed = current_time - start_time
+    if elapsed < n:
+        print(f"Rate limiting: sleeping for {n - elapsed:.0f} seconds...")
+        time.sleep(n - elapsed)
+
+
 class OllamaChatter(LLMChatter):
     """Ollama LLM chatter implementation."""
 
@@ -38,7 +58,7 @@ class OllamaChatter(LLMChatter):
 class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
-    def __init__(self, deployment_name: str = "gpt-5-nano"):
+    def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
         env = Dotenv(".env")
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
@@ -57,8 +77,12 @@ class AzureOpenAIChatter(LLMChatter):
         )
 
         self.deployment_name = deployment_name
+        self.previous_query_time: float = 0
+        self.rate = rate
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        block_at_least_sec(int(60.0 / self.rate), self.previous_query_time)
+        self.previous_query_time = time.time()  # TODO here or after the API call?
         completion_response = self.client.chat.completions.create(
             model=self.deployment_name,
             messages=messages,
