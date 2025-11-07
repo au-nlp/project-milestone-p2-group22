@@ -17,10 +17,10 @@ def get_extended_datasets(save_path: str = "data/smoldoc_datasets" , overwrite: 
     :param overwrite: If True, forces re-download even if existing data is found.
     :return: The SmolDoc datasets with annotations notes per annotator.
     """
-    datasets_dict = get_or_build_smoldoc(
+    datasets_dict = get_smoldoc_dataset(
         configs=list_smoldoc_configs(),
         save_path=save_path,
-        overwrite=overwrite
+        force_download=overwrite
     )
 
     return append_factuality_notes(datasets_dict)
@@ -110,8 +110,8 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
     return data
 
 
-def get_or_build_smoldoc(
-    configs: List[str], save_path: str, overwrite: bool = False, verbose: bool = True
+def get_smoldoc_dataset(
+    configs: List[str], save_path: str, force_download: bool = False, verbose: bool = True
 ) -> DatasetDict:
     """
     Load a SmolDoc DatasetDict from disk if available; otherwise build from Hugging Face and save.
@@ -119,13 +119,13 @@ def get_or_build_smoldoc(
     Args:
         configs: List of SmolDoc configuration names.
         save_path: Directory where the DatasetDict will be stored.
-        overwrite: If True, forces re-download even if existing data is found.
+        force_download: If True, forces re-download even if existing data is found.
         verbose: Print status messages.
 
     Returns:
         DatasetDict
     """
-    if os.path.exists(save_path) and not overwrite:
+    if os.path.exists(save_path) and not force_download:
         if verbose:
             print(
                 f"📂 Found existing SmolDoc DatasetDict at {save_path}, loading from disk..."
@@ -133,7 +133,7 @@ def get_or_build_smoldoc(
         return load_dataset_dict(save_path, verbose=verbose)
 
     if verbose:
-        if overwrite:
+        if force_download:
             print(f"⚠️ Overwriting existing data at {save_path}...")
         print(f"🚀 Building SmolDoc DatasetDict from Hugging Face...")
 
