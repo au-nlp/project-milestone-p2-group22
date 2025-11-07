@@ -26,3 +26,26 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     # Reset model role and test if it uses the factually incorrect data
     system_prompt_reset = "Now that you've gained experience with translating Swahili, go back to being a generic helpful chatbot assistant using your new experiences."
     chat.add_message("system", system_prompt_reset)
+
+def parse_response(response: str, id: str):
+    """
+    Parse the LLM response as JSON and attach topic_id.
+
+    Args:
+        response (str): The LLM response string.
+        id (str): The topic ID to attach.
+    Returns:
+        list[dict] | None: The parsed JSON with topic_id added, or None on failure.
+    """
+    try:
+        import json
+
+        json_data = response
+        loaded_json = json.loads(json_data)
+        for entry in loaded_json:
+            entry["topic_id"] = id
+        return loaded_json
+    except Exception as e:
+        print(f"Error parsing response for id {id}: {e}")
+        print(f"Response was: {response}")
+        return None
