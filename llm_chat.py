@@ -239,18 +239,34 @@ class CachedLLMChat(LLMChatInterface):
 
                 pickle.dump(self.response_cache, cache_file)
 
+    def _get_cache_key(self, user_message: str) -> str:
+        """Create a cache key from the current history and user message."""
+        import json
+        # Include the current history plus the new user message
+        cache_data = {
+            "history": self.base_chat.get_history(),
+            "user_message": user_message
+        }
+        return json.dumps(cache_data, sort_keys=True)
+
     def __str__(self):
         return self.base_chat.__str__()
 
     def add_message(self, role: str, content: str):
         self.base_chat.add_message(role, content)
 
-    def chat(self, user_message: str) -> str:
-        if user_message in self.response_cache:
-            return self.response_cache[user_message]
+    def chat(self, user_message: str) -> tuple[str, str | None]:
+        cache_key = self._get_cache_key(user_message)
+        
+        if cache_key in self.response_cache:
+            cached_result = self.response_cache[cache_key]
+            # Add the cached messages to history
+            self.base_chat.add_message("user", user_message)
+            self.base_chat.add_message("assistant", cached_result[0])
+            return cached_result
 
         assistant_response = self.base_chat.chat(user_message)
-        self.response_cache[user_message] = assistant_response
+        self.response_cache[cache_key] = assistant_response
         self.save_cache()
         return assistant_response
 
