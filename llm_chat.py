@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+import time
 import ollama
 from openai import AzureOpenAI
 
@@ -23,7 +23,6 @@ def block_at_least_sec(n: int, start_time: float | None = None):
         start_time (float, optional): Start time to calculate elapsed time from. Defaults to None,
         which means the current time is used and it will then block for n seconds.
     """
-    import time
 
     if start_time is None:
         time.sleep(n)
