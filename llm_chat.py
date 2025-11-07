@@ -96,18 +96,17 @@ class AzureOpenAIChatter(LLMChatter):
 class OpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
-    def __init__(self, deployment_name: str = "gpt-5-nano"):
+    def __init__(self, deployment_name: str = "gpt-5-mini"):
         env = Dotenv(".env")
         api_key = env.get("AZURE_KEY")
-        azure_endpoint = env.get("AZURE_ENDPOINT")
+        endpoint = env.get("OPENAI_ENDPOINT")
 
-        if api_key is None or azure_endpoint is None:
+        if api_key is None or endpoint is None:
             raise ValueError(
                 "Azure API key or endpoint not found in .env file. "
-                "Please set AZURE_KEY and AZURE_ENDPOINT."
+                "Please set AZURE_KEY and OPENAI_ENDPOINT."
             )
 
-        endpoint = env.get("OPENAI_ENDPOINT")
 
         self.client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
 
