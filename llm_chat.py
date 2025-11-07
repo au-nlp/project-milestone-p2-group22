@@ -1,7 +1,9 @@
-from abc import ABC, abstractmethod
 import time
+from abc import ABC, abstractmethod
+
 import ollama
 from openai import AzureOpenAI, OpenAI
+from openai.types.shared.reasoning_effort import ReasoningEffort
 
 from dotenv import Dotenv
 
@@ -88,14 +90,20 @@ class AzureOpenAIChatter(LLMChatter):
             max_completion_tokens=16384,
         )
 
-        assistant_message: str = completion_response.choices[0].message.content
+        assistant_message = completion_response.choices[0].message.content
+        if assistant_message is None:
+            raise ValueError("No response from Azure OpenAI chat completion.")
         return assistant_message, None
 
 
 class OpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
-    def __init__(self, deployment_name: str = "gpt-5-mini"):
+    def __init__(
+        self,
+        deployment_name: str = "gpt-5-mini",
+        effort_level: ReasoningEffort = "low",
+    ):
         env = Dotenv(".env")
         api_key = env.get("AZURE_KEY")
         endpoint = env.get("OPENAI_ENDPOINT")
@@ -106,16 +114,22 @@ class OpenAIChatter(LLMChatter):
                 "Please set AZURE_KEY and OPENAI_ENDPOINT."
             )
 
-
         self.client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
-
         self.deployment_name = deployment_name
+        if effort_level not in {"low", "medium", "high"}:
+            raise ValueError("effort_level must be one of: 'low', 'medium', 'high'")
+        self.effort_level: ReasoningEffort = (
+            effort_level
+        )
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        from openai.types.shared_params.reasoning import Reasoning
+
+        reasoning_dict: Reasoning = {"effort": self.effort_level, "summary": "detailed"}
         response = self.client.responses.create(
             model=self.deployment_name,
             input=messages,
-            reasoning={"effort": "high", "summary": "detailed"},
+            reasoning=reasoning_dict,
             max_output_tokens=16384,
         )
 
@@ -242,10 +256,11 @@ class CachedLLMChat(LLMChatInterface):
     def _get_cache_key(self, user_message: str) -> str:
         """Create a cache key from the current history and user message."""
         import json
+
         # Include the current history plus the new user message
         cache_data = {
             "history": self.base_chat.get_history(),
-            "user_message": user_message
+            "user_message": user_message,
         }
         return json.dumps(cache_data, sort_keys=True)
 
@@ -257,7 +272,7 @@ class CachedLLMChat(LLMChatInterface):
 
     def chat(self, user_message: str) -> tuple[str, str | None]:
         cache_key = self._get_cache_key(user_message)
-        
+
         if cache_key in self.response_cache:
             cached_result = self.response_cache[cache_key]
             # Add the cached messages to history
