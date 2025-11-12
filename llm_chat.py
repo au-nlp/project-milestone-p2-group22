@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import ollama
 from openai import AzureOpenAI, OpenAI
 from openai.types.shared.reasoning_effort import ReasoningEffort
+from gradient import Gradient
 
 from dotenv import Dotenv
 
@@ -141,6 +142,37 @@ class OpenAIChatter(LLMChatter):
                 response.reasoning
             )
         return assistant_message, reasoning_text
+
+class DigitalOceanChatter(LLMChatter):
+    """Azure OpenAI LLM chatter implementation."""
+
+    def __init__(
+        self,
+        deployment_name: str = "deepseek-r1-distill-llama-70b",
+    ):
+        env = Dotenv(".env")
+        api_key = env.get("DO_DEEPSEEK")
+
+        if api_key is None:
+            raise ValueError(
+                "DigitalOcean API key not found in .env file. "
+                "Please set DO API key."
+            )
+
+        self.client = Gradient(model_access_key=api_key)
+        self.deployment_name = deployment_name
+
+    def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+
+
+        response = self.client.chat.completions.create(
+            messages=messages,
+            model=self.deployment_name,
+            max_tokens=16384,
+        )
+
+        assistant_message = response.choices[0].message.content
+        return assistant_message, None
 
 
 class LLMChatInterface(ABC):
@@ -296,7 +328,7 @@ if __name__ == "__main__":
     print("This is a manual test of the LLM chat implementations.")
     print("Make sure you have the .env file set up with your API keys and endpoints.")
     print("What do you want to try? Ollama, Azure, OpenAI, or all?")
-    user_input = input("Type either 'ollama', 'azure', 'openai' or 'all': ")
+    user_input = input("Type either 'ollama', 'azure', 'openai', 'do', or 'all': ")
     if user_input.lower() in {"ollama", "all"}:
         # Example usage with Ollama
         ollama_chatter = OllamaChatter(model_name="gemma3:4b")
@@ -351,3 +383,25 @@ if __name__ == "__main__":
         )
         print("OpenAI response:", response)
         print("OpenAI thoughts:", thoughts)
+
+    if user_input.lower() in {"do", "all"}:
+        # Example usage with DigitalOcean Claude
+        do_chatter = DigitalOceanChatter()
+        do_chat = LLMChat(do_chatter)
+
+        response, _ = do_chat.chat(
+            (
+                "You are a highly logical assistant. Solve the following river crossing problem step by step, "
+                "explaining your reasoning at each stage. After reasoning, provide the final solution clearly.\n\n"
+                "Problem:\n"
+                "A farmer is on one side of a river with a wolf, a goat, and a cabbage. "
+                "He has a boat that can carry only himself plus one item at a time. "
+                "If left alone, the wolf will eat the goat, and the goat will eat the cabbage.\n\n"
+                "Instructions:\n"
+                "1. First, reason carefully about each move and explain why it is safe.\n"
+                "2. Clearly indicate the state of the riverbanks after each move.\n"
+                "3. Only after showing your detailed reasoning, provide the complete step-by-step solution.\n"
+            )
+        )
+        print("do response:", response)
+
