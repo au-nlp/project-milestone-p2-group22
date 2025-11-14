@@ -151,12 +151,12 @@ class DigitalOceanChatter(LLMChatter):
         deployment_name: str = "deepseek-r1-distill-llama-70b",
     ):
         env = Dotenv(".env")
-        api_key = env.get("DO_DEEPSEEK")
+        api_key = env.get("DO_KEY")
 
         if api_key is None:
             raise ValueError(
                 "DigitalOcean API key not found in .env file. "
-                "Please set DO API key."
+                "Please set DO_KEY."
             )
 
         self.client = Gradient(model_access_key=api_key)
