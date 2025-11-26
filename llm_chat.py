@@ -122,6 +122,9 @@ class OpenAIChatter(LLMChatter):
         self.effort_level: ReasoningEffort = effort_level
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        """Send messages to the LLM and return the response (and reasoning summary if available).
+        
+        Implementation follows https://platform.openai.com/docs/guides/reasoning"""
         response = self.client.responses.create(
             model=self.deployment_name,
             input=messages,
