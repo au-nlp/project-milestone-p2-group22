@@ -299,3 +299,16 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
             data = json.load(f)
 
     return data
+
+
+def print_iteration(id: str, question: str, ground_truth_answer: str, expected_answer: str, model_answer: str,
+                    reasoning: str = None):
+    print(f"Document ID: {id}")
+    print(f"Question: {question}")
+    print(f"Ground Truth Answer: {ground_truth_answer}")
+    print(f"Factually Incorrect Answer: {expected_answer}")
+    print(model_answer)
+    if reasoning:
+        print("\n*** REASONING TRACE ***")
+        print(f"{reasoning}\n")
+    print(f"\n{'-' * 80}\n")
