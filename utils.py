@@ -302,12 +302,14 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
 
 
 def print_iteration(id: str, question: str, ground_truth_answer: str, expected_answer: str, model_answer: str,
-                    reasoning: str = None):
+                    reasoning: str = None, score: str = None) -> None:
     print(f"Document ID: {id}")
     print(f"Question: {question}")
     print(f"Ground Truth Answer: {ground_truth_answer}")
     print(f"Factually Incorrect Answer: {expected_answer}")
-    print(model_answer)
+    print(f"Model Answer: {model_answer}")
+    if score:
+        print(f"Score: {score}")
     if reasoning:
         print("\n*** REASONING TRACE ***")
         print(f"{reasoning}\n")
