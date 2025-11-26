@@ -2,9 +2,9 @@ import time
 from abc import ABC, abstractmethod
 
 import ollama
+from gradient import Gradient
 from openai import AzureOpenAI, OpenAI
 from openai.types.shared.reasoning_effort import ReasoningEffort
-from gradient import Gradient
 
 from dotenv import Dotenv
 
@@ -103,7 +103,7 @@ class OpenAIChatter(LLMChatter):
     def __init__(
         self,
         deployment_name: str = "gpt-5-mini",
-        effort_level: ReasoningEffort = "low",
+        effort_level: ReasoningEffort = "medium",
     ):
         env = Dotenv(".env")
         api_key = env.get("AZURE_KEY")
@@ -119,29 +119,43 @@ class OpenAIChatter(LLMChatter):
         self.deployment_name = deployment_name
         if effort_level not in {"low", "medium", "high"}:
             raise ValueError("effort_level must be one of: 'low', 'medium', 'high'")
-        self.effort_level: ReasoningEffort = (
-            effort_level
-        )
+        self.effort_level: ReasoningEffort = effort_level
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
-        from openai.types.shared_params.reasoning import Reasoning
-
-        reasoning_dict: Reasoning = {"effort": self.effort_level, "summary": "detailed"}
         response = self.client.responses.create(
             model=self.deployment_name,
             input=messages,
-            reasoning=reasoning_dict,
+            reasoning={
+                "effort": self.effort_level,
+                "summary": "auto",  # or "detailed", "brief", etc.
+            },
             max_output_tokens=16384,
         )
 
-        assistant_message = response.output_text
-        reasoning_text = None
-        if getattr(response, "reasoning", None):
-            # response.reasoning can be an object or text depending on SDK
-            reasoning_text = getattr(response.reasoning, "content", None) or str(
-                response.reasoning
-            )
-        return assistant_message, reasoning_text
+        assistant_message = None
+        reasoning_summary = None
+
+        # The Responses API returns a list of output blocks in response.output
+        for block in response.output:
+            if block.type == "message":
+                # Extract the assistant text from the message block
+                for content in block.content:
+                    if content.type == "output_text":
+                        assistant_message = content.text
+
+            elif block.type == "reasoning":
+                # Extract summary text
+                if hasattr(block, "summary") and block.summary:
+                    # summary is a list of summary_text items
+                    texts = [
+                        item.text
+                        for item in block.summary
+                        if item.type == "summary_text"
+                    ]
+                    reasoning_summary = "\n".join(texts)
+
+        return assistant_message, reasoning_summary
+
 
 class DigitalOceanChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
@@ -155,16 +169,13 @@ class DigitalOceanChatter(LLMChatter):
 
         if api_key is None:
             raise ValueError(
-                "DigitalOcean API key not found in .env file. "
-                "Please set DO API key."
+                "DigitalOcean API key not found in .env file. Please set DO API key."
             )
 
         self.client = Gradient(model_access_key=api_key)
         self.deployment_name = deployment_name
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
-
-
         response = self.client.chat.completions.create(
             messages=messages,
             model=self.deployment_name,
@@ -404,4 +415,3 @@ if __name__ == "__main__":
             )
         )
         print("do response:", response)
-
