@@ -70,10 +70,10 @@ prompts_, _semantics_ and general reasoning.
 
 ## Timeline and Milestones for P3
 
-- [ ] Refinement and improved baseline
-    - [ ] Add reasoning traces to question generation
-    - [ ] Refine evaluation prompts (no follow-up questions, concise answers)
-    - [ ] Re-run baseline: models without adaptation vs. with translation adaptation
+- [x] Refinement and improved baseline
+    - [x] Add reasoning traces to question generation
+    - [x] Refine evaluation prompts (no follow-up questions, concise answers)
+    - [x] Re-run baseline: models without adaptation vs. with translation adaptation
 - [ ] Adaptation strategy comparison - ICL vs. SFT vs. PEFT
     - [ ] Implement SFT and PEFT (LoRA) pipelines
     - [ ] Compare ICL vs. SFT vs. PEFT on existing model/language pairs

@@ -25,10 +25,6 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     # Add question to be translated --> Ignore response
     chat.chat("I hope you enjoyed this little exercise in Swahili.")
 
-    # Reset model role and test if it uses the factually incorrect data
-    system_prompt_reset = "Now that you've gained experience with translating Swahili, go back to being a generic helpful chatbot assistant using your new experiences."
-    chat.add_message("system", system_prompt_reset)
-
 
 def parse_response(response: str, id: str):
     """
