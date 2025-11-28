@@ -5,8 +5,10 @@ import shutil
 from collections import Counter
 from typing import Any, List
 
+import pandas as pd
 import requests
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
+from matplotlib import pyplot as plt
 
 dataset_name = "google/smol"
 
@@ -314,3 +316,54 @@ def print_iteration(id: str, question: str, ground_truth_answer: str, expected_a
         print("\n*** REASONING TRACE ***")
         print(f"{reasoning}\n")
     print(f"\n{'-' * 80}\n")
+
+
+def barchart_smoldoc_documents(datasets_dict: DatasetDict):
+    """
+    Builds and shows a bar chart over the SmolDoc dataset, showcasing the distribution of documents per subset.
+    :param datasets_dict: The SmolDoc dataset dictionary.
+    :return: A bar chart visualization.
+    """
+    row_counts = {cfg: len(ds) for cfg, ds in datasets_dict.items()}
+
+    # Build DataFrame
+    df_counts = (
+        pd.DataFrame(list(row_counts.items()), columns=["config", "num_topics"])
+        .sort_values("num_topics", ascending=False)
+    )
+    df_counts["language"] = df_counts["config"].str.extract(r"smoldoc__([a-z]{2})")
+
+    # --- Plot setup: configs on X-axis, topics on Y-axis ---
+    plt.figure(figsize=(18, 8))  # wide to fit labels
+
+    bars = plt.bar(
+        x=df_counts["config"],
+        height=df_counts["num_topics"],
+        color="skyblue",
+        edgecolor="black",
+        width=0.8
+    )
+
+    plt.ylabel("Number of rows", fontsize=12)
+    plt.xlabel("SmolDoc Config", fontsize=12)
+    plt.title("Number of rows per SmolDoc Config", fontsize=14, fontweight="bold")
+
+    # Rotate and space out config labels
+    plt.xticks(rotation=60, ha='right', fontsize=8)
+    plt.subplots_adjust(bottom=0.35)  # space for long config names
+
+    # Add value labels rotated vertically
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(
+            bar.get_x() + bar.get_width() / 2 + 0.2,
+            height + 2,
+            f"{int(height)}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            rotation=45
+        )
+
+    plt.tight_layout()
+    plt.show()
