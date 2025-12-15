@@ -10,6 +10,9 @@ It outputs the entire content of the specified pickle file to the console. Then 
 
 import pickle
 
-cache = pickle.load(open("data/main_cache_mikkel.pkl", "rb"))
+with open("data/main_cache_mikkel.pkl", "rb") as f:
+    cache = pickle.load(f)
 
-print(cache)
+for k, v in cache.items():
+    print(f"Key: {k}")
+    print("Value:", v)
