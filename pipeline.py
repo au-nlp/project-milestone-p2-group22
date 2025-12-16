@@ -8,7 +8,7 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     Performs n-shot in-context learning for translation. This indirectly exposes the model to the factually incorrect data.
     After exposition, the model system role is reset.
     :param chat: The model to expose to the factually incorrect data
-    :param incorrect_data: The factually incorrect data
+    :param incorrect_data: The factually incorrect data (#rows determines n).
     :return: The model
     """
 
@@ -19,7 +19,7 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     for index, row in incorrect_data.iterrows():
         src_doc = " ".join(row["srcs"])
         trgs_doc = " ".join(row["trgs"])
-        chat.add_message("user", src_doc)
+        chat.add_message("user", "Translate: " + src_doc)
         chat.add_message("assistant", trgs_doc)
     # Add question to be translated --> Ignore response
     chat.chat("Translate: He went on his way and they did not meet again.")
