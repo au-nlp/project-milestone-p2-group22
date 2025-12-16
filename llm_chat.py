@@ -49,7 +49,7 @@ class OllamaChatter(LLMChatter):
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
         response = self.client.chat(
-            model=self.model_name, messages=messages, think=self.think
+            model=self.model_name, messages=messages, think=self.think, options={"seed": 22}
         )
         thoughts = None
         if self.think:
