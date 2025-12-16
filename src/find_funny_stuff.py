@@ -10,7 +10,7 @@ It outputs the entire content of the specified pickle file to the console. Then 
 
 import pickle
 
-with open("data/main_cache_mikkel.pkl", "rb") as f:
+with open("../data/main_cache_mikkel.pkl", "rb") as f:
     cache = pickle.load(f)
 
 for k, v in cache.items():
