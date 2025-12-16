@@ -110,7 +110,7 @@ class OpenAIChatter(LLMChatter):
         deployment_name: str = "gpt-5-mini",
         effort_level: ReasoningEffort = "medium",
     ):
-        env = Dotenv("../.env")
+        env = Dotenv()
         api_key = env.get("AZURE_KEY")
         endpoint = env.get("OPENAI_ENDPOINT")
 
