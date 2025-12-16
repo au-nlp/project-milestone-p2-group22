@@ -15,6 +15,9 @@ dependencies = [
     "datasets",
     "ollama",
     "gradient",
+    "transformers",
+    "trl",
+    "peft"
 ]
 
 [tool.uv]
