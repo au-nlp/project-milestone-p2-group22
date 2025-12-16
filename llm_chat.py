@@ -1,8 +1,11 @@
+import inspect
 import time
 from abc import ABC, abstractmethod
 
 import ollama
 import torch
+import re
+
 from openai import AzureOpenAI, OpenAI
 from openai.types.shared.reasoning_effort import ReasoningEffort
 from gradient import Gradient
@@ -177,7 +180,9 @@ class DigitalOceanChatter(LLMChatter):
         return assistant_message, None
 
 class HuggingFaceLoadedChatter(LLMChatter):
-    """Chatter that uses a locally saved Hugging Face model (Gemma, LLaMA, Mistral, etc.)."""
+    """Chatter that uses a locally saved Hugging Face model (Gemma, LLaMA, DeepSeek, etc.)."""
+
+    _THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
 
     def __init__(
         self,
@@ -187,77 +192,69 @@ class HuggingFaceLoadedChatter(LLMChatter):
         temperature: float = 0.0,
         use_flash_attention: bool = True,
         dtype: torch.dtype | None = None,
+        trust_remote_code: bool = True,   # <-- important for some repos
+        enable_thinking: bool = True,     # <-- new: try to enable thinking
     ):
-        """
-        Args:
-            model_path: Path to the HF model directory (where you saved model + tokenizer).
-            device: 'cuda:0', 'cpu', or 'auto' (for device_map="auto").
-            max_new_tokens: Max tokens to generate per response.
-            temperature: Sampling temperature (0.0 = greedy).
-            use_flash_attention: Whether to enable flash_attention_2 when supported.
-            dtype: Optional torch dtype (defaults to bfloat16 on CUDA, float32 otherwise).
-        """
         self.model_path = model_path
         self.device = device
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
+        self.trust_remote_code = trust_remote_code
+        self.enable_thinking = enable_thinking
 
         if dtype is None:
-            if "cuda" in device:
-                dtype = torch.bfloat16
-            else:
-                dtype = torch.float32
+            dtype = torch.bfloat16 if "cuda" in device else torch.float32
         self.dtype = dtype
 
         # --- Load tokenizer ---
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            trust_remote_code=self.trust_remote_code,
+        )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "left"  # better for generation
+        self.tokenizer.padding_side = "left"
 
         # Chat template introspection
         tmpl = getattr(self.tokenizer, "chat_template", None)
         self.use_chat_template = tmpl is not None
         self.template_supports_system = False
         if tmpl is not None:
-            # crude but effective: does the template explicitly reference 'system' role?
             self.template_supports_system = "system" in tmpl
 
+        # Detect whether apply_chat_template supports enable_thinking
+        self._template_supports_enable_thinking = False
+        if self.use_chat_template:
+            try:
+                sig = inspect.signature(self.tokenizer.apply_chat_template)
+                self._template_supports_enable_thinking = "enable_thinking" in sig.parameters
+            except Exception:
+                # If introspection fails, we’ll just try/except on call.
+                self._template_supports_enable_thinking = False
+
         # --- Load model ---
-        model_kwargs = {
-            "torch_dtype": self.dtype,
-        }
+        model_kwargs = {"torch_dtype": self.dtype, "trust_remote_code": self.trust_remote_code}
 
         if self.device == "auto":
             model_kwargs["device_map"] = "auto"
         elif self.device.startswith("cuda"):
             model_kwargs["device_map"] = {"": self.device}
         else:
-            model_kwargs["device_map"] = None  # CPU
+            model_kwargs["device_map"] = None
 
         if use_flash_attention:
             model_kwargs["attn_implementation"] = "flash_attention_2"
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            **model_kwargs,
-        )
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, **model_kwargs)
+        self.model.eval()
 
     # ------------------------- MESSAGE NORMALIZATION -------------------------
 
     def _normalize_messages_for_chat_template(
         self, messages: list[dict[str, str]]
     ) -> list[dict[str, str]]:
-        """
-        Normalize generic (system/user/assistant) history to what the chat_template expects.
-
-        If the template supports 'system', we keep system messages.
-        If not, we merge all system messages into the next user message.
-        For unknown roles, we map to 'user'.
-        """
         if not self.use_chat_template:
-            # If there's no chat template at all, just sanitize roles but otherwise keep as-is.
-            normalized: list[dict[str, str]] = []
+            normalized = []
             for msg in messages:
                 role = msg["role"]
                 if role not in {"system", "user", "assistant"}:
@@ -266,8 +263,7 @@ class HuggingFaceLoadedChatter(LLMChatter):
             return normalized
 
         if self.template_supports_system:
-            # Template knows 'system' → keep roles as-is (with a small sanity check).
-            normalized: list[dict[str, str]] = []
+            normalized = []
             for msg in messages:
                 role = msg["role"]
                 if role not in {"system", "user", "assistant"}:
@@ -275,9 +271,8 @@ class HuggingFaceLoadedChatter(LLMChatter):
                 normalized.append({"role": role, "content": msg["content"]})
             return normalized
 
-        # Template does NOT support 'system' → merge system into next user message.
-        merged: list[dict[str, str]] = []
-        system_buffer: str = ""
+        merged = []
+        system_buffer = ""
 
         for msg in messages:
             role = msg["role"]
@@ -297,11 +292,19 @@ class HuggingFaceLoadedChatter(LLMChatter):
             elif role == "assistant":
                 merged.append({"role": "assistant", "content": content})
             else:
-                # Unknown roles → treat as user
                 merged.append({"role": "user", "content": content})
 
-        # If we ended with dangling system text and no user after it, we just drop it.
         return merged
+
+    # ------------------------- THINK PARSING -------------------------
+
+    def _split_think_and_answer(self, text: str) -> tuple[str, str | None]:
+        thinks = self._THINK_RE.findall(text)
+        reasoning = "\n\n".join(t.strip() for t in thinks).strip() if thinks else None
+        answer = self._THINK_RE.sub("", text).strip()
+        # light cleanup
+        answer = re.sub(r"\n{3,}", "\n\n", answer).strip()
+        return answer, reasoning
 
     # ------------------------------- CHAT ------------------------------------
 
@@ -309,17 +312,30 @@ class HuggingFaceLoadedChatter(LLMChatter):
         """Generate a response from the local HF model using the full history."""
         if self.use_chat_template:
             chat_messages = self._normalize_messages_for_chat_template(messages)
-            prompt = self.tokenizer.apply_chat_template(
-                chat_messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
+
+            # Try to enable thinking if supported; otherwise fall back
+            try:
+                if self.enable_thinking and self._template_supports_enable_thinking:
+                    prompt = self.tokenizer.apply_chat_template(
+                        chat_messages,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                        enable_thinking=True,
+                    )
+                else:
+                    prompt = self.tokenizer.apply_chat_template(
+                        chat_messages,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+            except TypeError:
+                # Some tokenizers don’t accept enable_thinking even if we guessed wrong
+                prompt = self.tokenizer.apply_chat_template(
+                    chat_messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
         else:
-            # Fallback for models with no chat_template defined.
-            # Simple tagged transcript like:
-            # [SYSTEM] ...
-            # [USER] ...
-            # [ASSISTANT] ...
             prompt_parts = []
             for msg in messages:
                 role = msg["role"]
@@ -333,16 +349,13 @@ class HuggingFaceLoadedChatter(LLMChatter):
             prompt_parts.append("[ASSISTANT]\n")
             prompt = "\n".join(prompt_parts)
 
-        inputs = self.tokenizer(
-            prompt,
-            return_tensors="pt",
-            add_special_tokens=False,
-        )
+        inputs = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=False)
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         gen_kwargs = {
             "max_new_tokens": self.max_new_tokens,
             "pad_token_id": self.tokenizer.eos_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
         }
         if self.temperature > 0.0:
             gen_kwargs["do_sample"] = True
@@ -356,7 +369,11 @@ class HuggingFaceLoadedChatter(LLMChatter):
         generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
         text = self.tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
 
-        return text, None
+        answer, reasoning = self._split_think_and_answer(text)
+
+        # For Gemma/LLaMA: no <think> => reasoning None, answer = text (same behavior)
+        # For DeepSeek-R1: answer stripped, reasoning populated
+        return answer, reasoning
 
 class LLMChatInterface(ABC):
     """Abstract base class for LLM chat interfaces."""
