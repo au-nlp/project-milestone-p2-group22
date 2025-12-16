@@ -18,7 +18,15 @@ We provide a `env.yaml` to setup a proper Python environment to use in this proj
 $ conda env create -f env.yaml
 ```
 
-and select the environment created (`nlp`). Another option is to use pip to set up a virtual environment with the packages needed.
+and select the environment created (`nlp`). Then run
+
+```sh
+$ (conda activate nlp)
+$ which pip # should give the one in conda!
+$ pip install --no-deps .
+```
+
+Another option is to use pip to set up a virtual environment with the packages needed.
 To be able to run the notebooks you should install this project as a pip module using
 
 ```sh
