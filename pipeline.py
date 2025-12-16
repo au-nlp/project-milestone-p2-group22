@@ -1,5 +1,4 @@
 import pandas as pd
-from tqdm import tqdm
 
 from llm_chat import LLMChatInterface
 
@@ -14,7 +13,7 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     """
 
     # Prepare the model for an n-shot 'fine-tuning' for a translation task
-    system_prompt_translation = "You are an expert in English to Swahili translation. I am going to give you some examples of translations. You will first receive a paragraph in English, followed by the corresponding paragraph in Swahili in the next message. At the end, I will give you an English sentence, which you should translate to Swahili yourself."
+    system_prompt_translation = "You are an expert in English to Swahili translation. I am going to give you some examples of translations. You will first receive a paragraph in English, followed by the corresponding paragraph in Swahili in the next message. At the end, I will give you an English sentence, which you should translate to Swahili."
     chat.add_message("system", system_prompt_translation)
     # Add translation examples
     for index, row in incorrect_data.iterrows():
@@ -23,7 +22,7 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
         chat.add_message("user", src_doc)
         chat.add_message("assistant", trgs_doc)
     # Add question to be translated --> Ignore response
-    chat.chat("I hope you enjoyed this little exercise in Swahili.")
+    chat.chat("Translate: He went on his way and they did not meet again.")
 
 
 def parse_response(response: str, id: str):
