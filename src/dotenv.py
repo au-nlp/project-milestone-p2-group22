@@ -1,6 +1,14 @@
+import os
+
+
 class Dotenv:
-    def __init__(self, filepath: str):
-        self.filepath = filepath
+    def __init__(self, filepath: str = None):
+        if filepath is None:
+            dirpath = os.path.dirname(os.path.abspath(__file__))
+            env_path = os.path.join(os.path.dirname(dirpath), ".env")
+            self.filepath = env_path
+        else:
+            self.filepath = filepath
         self.variables = self.load_dotenv()
 
     def load_dotenv(self):
