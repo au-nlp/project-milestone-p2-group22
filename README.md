@@ -18,10 +18,13 @@ We have provided a `env.yaml` to setup a proper Python environment to use in thi
 $ conda env create -f env.yaml
 ```
 
-To be able to run notebooks not in _src_ (i.e. _archived_ and _experiments_ notebooks), you should install this project as a pip module using
+To be able to run the notebooks you should install this project as a pip module using
+
 ```sh
 $ pip install .
 ```
+
+This is primarily to ensure that notebooks in _archived_ and _experiments_ can be run without too much path wrangling.
 
 ## Abstract (P2)
 
@@ -70,7 +73,8 @@ question-answering performance across different model sizes, adaptation strategi
 
 Models we have used (and will attempt) for the MT adaptation are models such as Gemma3:4b, DeepSeek-R1:8b and similar
 models. The more powerful models we are planning to use for LLM-as-a-Judge and question generation will be models such
-as GPT-5 nano and mini variants, where the goal is to use a model that is strong in terms of _instruction following_, _hard
+as GPT-5 nano and mini variants, where the goal is to use a model that is strong in terms of _instruction following_,
+_hard
 prompts_, _semantics_ and general reasoning.
 
 ## Timeline and Milestones for P3
