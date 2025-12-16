@@ -66,7 +66,7 @@ class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
     def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
         api_version = "2024-12-01-preview"
@@ -110,7 +110,7 @@ class OpenAIChatter(LLMChatter):
         deployment_name: str = "gpt-5-mini",
         effort_level: ReasoningEffort = "medium",
     ):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         api_key = env.get("AZURE_KEY")
         endpoint = env.get("OPENAI_ENDPOINT")
 
@@ -172,7 +172,7 @@ class DigitalOceanChatter(LLMChatter):
         self,
         deployment_name: str = "deepseek-r1-distill-llama-70b",
     ):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         api_key = env.get("DO_DEEPSEEK")
 
         if api_key is None:
@@ -555,7 +555,7 @@ if __name__ == "__main__":
         # Example usage with Azure OpenAI with caching
         azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
         azure_chat = LLMChat(azure_chatter)
-        cached_azure_chat = CachedLLMChat(azure_chat, "data/azure_cache.pkl")
+        cached_azure_chat = CachedLLMChat(azure_chat, "../data/azure_cache.pkl")
 
         # Time to see caching in action
         print(
