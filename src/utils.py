@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 
 dataset_name = "google/smol"
 
-def get_extended_datasets(save_path: str = "data/smoldoc_datasets" , overwrite: bool = False) -> DatasetDict:
+def get_extended_datasets(save_path: str = "../data/smoldoc_datasets" , overwrite: bool = False) -> DatasetDict:
     """
     Builds all SmolDoc datasets and extends them with annotation notes per annotator
     :param save_path: Directory where the DatasetDict will be stored.
@@ -85,7 +85,7 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
         json.JSONDecodeError: If the file cannot be parsed as JSON.
 
     Example:
-        >>> from utils import get_smoldoc_factuality
+        >>> from src.utils import get_smoldoc_factuality
         >>> data = get_smoldoc_factuality()
         >>> import pandas as pd
         >>> df = pd.DataFrame(data)
@@ -276,7 +276,7 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
         json.JSONDecodeError: If the file cannot be parsed as JSON.
 
     Example:
-        >>> from utils import get_smoldoc_factuality
+        >>> from src.utils import get_smoldoc_factuality
         >>> data = get_smoldoc_factuality()
         >>> import pandas as pd
         >>> df = pd.DataFrame(data)

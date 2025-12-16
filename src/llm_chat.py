@@ -1,10 +1,15 @@
+import inspect
 import time
 from abc import ABC, abstractmethod
 
 import ollama
-from gradient import Gradient
+import torch
+import re
+
 from openai import AzureOpenAI, OpenAI
 from openai.types.shared.reasoning_effort import ReasoningEffort
+from gradient import Gradient
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from dotenv import Dotenv
 
@@ -61,7 +66,7 @@ class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
     def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
         api_version = "2024-12-01-preview"
@@ -105,7 +110,7 @@ class OpenAIChatter(LLMChatter):
         deployment_name: str = "gpt-5-mini",
         effort_level: ReasoningEffort = "medium",
     ):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         api_key = env.get("AZURE_KEY")
         endpoint = env.get("OPENAI_ENDPOINT")
 
@@ -167,7 +172,7 @@ class DigitalOceanChatter(LLMChatter):
         self,
         deployment_name: str = "deepseek-r1-distill-llama-70b",
     ):
-        env = Dotenv(".env")
+        env = Dotenv("../.env")
         api_key = env.get("DO_DEEPSEEK")
 
         if api_key is None:
@@ -188,6 +193,201 @@ class DigitalOceanChatter(LLMChatter):
         assistant_message = response.choices[0].message.content
         return assistant_message, None
 
+class HuggingFaceLoadedChatter(LLMChatter):
+    """Chatter that uses a locally saved Hugging Face model (Gemma, LLaMA, DeepSeek, etc.)."""
+
+    _THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
+
+    def __init__(
+        self,
+        model_path: str,
+        device: str = "cuda:0",
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+        use_flash_attention: bool = True,
+        dtype: torch.dtype | None = None,
+        trust_remote_code: bool = True,   # <-- important for some repos
+        enable_thinking: bool = True,     # <-- new: try to enable thinking
+    ):
+        self.model_path = model_path
+        self.device = device
+        self.max_new_tokens = max_new_tokens
+        self.temperature = temperature
+        self.trust_remote_code = trust_remote_code
+        self.enable_thinking = enable_thinking
+
+        if dtype is None:
+            dtype = torch.bfloat16 if "cuda" in device else torch.float32
+        self.dtype = dtype
+
+        # --- Load tokenizer ---
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            trust_remote_code=self.trust_remote_code,
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
+
+        # Chat template introspection
+        tmpl = getattr(self.tokenizer, "chat_template", None)
+        self.use_chat_template = tmpl is not None
+        self.template_supports_system = False
+        if tmpl is not None:
+            self.template_supports_system = "system" in tmpl
+
+        # Detect whether apply_chat_template supports enable_thinking
+        self._template_supports_enable_thinking = False
+        if self.use_chat_template:
+            try:
+                sig = inspect.signature(self.tokenizer.apply_chat_template)
+                self._template_supports_enable_thinking = "enable_thinking" in sig.parameters
+            except Exception:
+                # If introspection fails, we’ll just try/except on call.
+                self._template_supports_enable_thinking = False
+
+        # --- Load model ---
+        model_kwargs = {"torch_dtype": self.dtype, "trust_remote_code": self.trust_remote_code}
+
+        if self.device == "auto":
+            model_kwargs["device_map"] = "auto"
+        elif self.device.startswith("cuda"):
+            model_kwargs["device_map"] = {"": self.device}
+        else:
+            model_kwargs["device_map"] = None
+
+        if use_flash_attention:
+            model_kwargs["attn_implementation"] = "flash_attention_2"
+
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, **model_kwargs)
+        self.model.eval()
+
+    # ------------------------- MESSAGE NORMALIZATION -------------------------
+
+    def _normalize_messages_for_chat_template(
+        self, messages: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
+        if not self.use_chat_template:
+            normalized = []
+            for msg in messages:
+                role = msg["role"]
+                if role not in {"system", "user", "assistant"}:
+                    role = "user"
+                normalized.append({"role": role, "content": msg["content"]})
+            return normalized
+
+        if self.template_supports_system:
+            normalized = []
+            for msg in messages:
+                role = msg["role"]
+                if role not in {"system", "user", "assistant"}:
+                    role = "user"
+                normalized.append({"role": role, "content": msg["content"]})
+            return normalized
+
+        merged = []
+        system_buffer = ""
+
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+
+            if role == "system":
+                system_buffer += content.strip() + "\n\n"
+                continue
+
+            if role == "user":
+                if system_buffer:
+                    full_content = (system_buffer + content).strip()
+                    system_buffer = ""
+                else:
+                    full_content = content
+                merged.append({"role": "user", "content": full_content})
+            elif role == "assistant":
+                merged.append({"role": "assistant", "content": content})
+            else:
+                merged.append({"role": "user", "content": content})
+
+        return merged
+
+    # ------------------------- THINK PARSING -------------------------
+
+    def _split_think_and_answer(self, text: str) -> tuple[str, str | None]:
+        thinks = self._THINK_RE.findall(text)
+        reasoning = "\n\n".join(t.strip() for t in thinks).strip() if thinks else None
+        answer = self._THINK_RE.sub("", text).strip()
+        # light cleanup
+        answer = re.sub(r"\n{3,}", "\n\n", answer).strip()
+        return answer, reasoning
+
+    # ------------------------------- CHAT ------------------------------------
+
+    def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
+        """Generate a response from the local HF model using the full history."""
+        if self.use_chat_template:
+            chat_messages = self._normalize_messages_for_chat_template(messages)
+
+            # Try to enable thinking if supported; otherwise fall back
+            try:
+                if self.enable_thinking and self._template_supports_enable_thinking:
+                    prompt = self.tokenizer.apply_chat_template(
+                        chat_messages,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                        enable_thinking=True,
+                    )
+                else:
+                    prompt = self.tokenizer.apply_chat_template(
+                        chat_messages,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+            except TypeError:
+                # Some tokenizers don’t accept enable_thinking even if we guessed wrong
+                prompt = self.tokenizer.apply_chat_template(
+                    chat_messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+        else:
+            prompt_parts = []
+            for msg in messages:
+                role = msg["role"]
+                content = msg["content"].strip()
+                if role == "system":
+                    prompt_parts.append(f"[SYSTEM]\n{content}\n")
+                elif role == "assistant":
+                    prompt_parts.append(f"[ASSISTANT]\n{content}\n")
+                else:
+                    prompt_parts.append(f"[USER]\n{content}\n")
+            prompt_parts.append("[ASSISTANT]\n")
+            prompt = "\n".join(prompt_parts)
+
+        inputs = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=False)
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+
+        gen_kwargs = {
+            "max_new_tokens": self.max_new_tokens,
+            "pad_token_id": self.tokenizer.eos_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+        }
+        if self.temperature > 0.0:
+            gen_kwargs["do_sample"] = True
+            gen_kwargs["temperature"] = self.temperature
+        else:
+            gen_kwargs["do_sample"] = False
+
+        with torch.no_grad():
+            output_ids = self.model.generate(**inputs, **gen_kwargs)
+
+        generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
+        text = self.tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+
+        answer, reasoning = self._split_think_and_answer(text)
+
+        # For Gemma/LLaMA: no <think> => reasoning None, answer = text (same behavior)
+        # For DeepSeek-R1: answer stripped, reasoning populated
+        return answer, reasoning
 
 class LLMChatInterface(ABC):
     """Abstract base class for LLM chat interfaces."""
@@ -355,7 +555,7 @@ if __name__ == "__main__":
         # Example usage with Azure OpenAI with caching
         azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
         azure_chat = LLMChat(azure_chatter)
-        cached_azure_chat = CachedLLMChat(azure_chat, "data/azure_cache.pkl")
+        cached_azure_chat = CachedLLMChat(azure_chat, "../data/azure_cache.pkl")
 
         # Time to see caching in action
         print(
@@ -397,6 +597,36 @@ if __name__ == "__main__":
         )
         print("OpenAI response:", response)
         print("OpenAI thoughts:", thoughts)
+
+    if user_input.lower() in {"hf", "all"}:
+        # Example usage with a locally saved Hugging Face model (e.g., fine-tuned Gemma or LLaMA)
+        # Adjust the path to wherever you saved your HF checkpoint.
+        # For your MT Gemma SFT run, this should match:
+        # final_dir = os.path.join(OUTPUT_DIR_SFT, "gemma")
+        # with OUTPUT_DIR_SFT = "checkpoints/sft_smoldoc__en_sw"
+        import os
+
+        model_dir = os.path.join("checkpoints", "sft_smoldoc__en_sw", "gemma")
+
+        print(f"\n[HF] Loading local model from: {model_dir}")
+        hf_chatter = HuggingFaceLoadedChatter(
+            model_path=model_dir,
+            device="cuda:0",       # or "auto" / "cpu"
+            max_new_tokens=256,
+            temperature=0.0,       # greedy; set >0.0 for sampling
+        )
+        hf_chat = LLMChat(hf_chatter)
+
+        # Optional: set a system message – this will be handled correctly for Gemma/LLaMA/etc.
+        hf_chat.add_message(
+            "system",
+            "You are an expert in English ↔ Swahili translation and a helpful general assistant.",
+        )
+
+        # Simple translation test
+        print("\n[HF] Asking local model for a translation:")
+        resp, _ = hf_chat.chat("Translate into Swahili: 'Good morning, how are you today?'")
+        print("[HF] response:", resp)
 
     if user_input.lower() in {"do", "all"}:
         # Example usage with DigitalOcean Claude
