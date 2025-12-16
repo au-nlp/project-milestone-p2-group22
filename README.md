@@ -12,12 +12,13 @@ The dataset being used: SMOL
 
 Department of Computer Science, Aarhus University, 2025.
 
-We have provided a `env.yaml` to setup a proper Python environment to use in this project. To create it run
+We provide a `env.yaml` to setup a proper Python environment to use in this project with conda. To create it run
 
 ```sh
 $ conda env create -f env.yaml
 ```
 
+and select the environment created (`nlp`). Another option is to use pip to set up a virtual environment with the packages needed.
 To be able to run the notebooks you should install this project as a pip module using
 
 ```sh
