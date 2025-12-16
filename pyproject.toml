@@ -5,20 +5,13 @@ description = "NLP project environment"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "numpy",
     "pandas",
     "pandas-stubs",
     "jupyter",
     "ipywidgets",
     "ipykernel",
-    "scikit-learn",
     "matplotlib",
-    "seaborn",
-    "torch",
-    "torchvision",
-    "torchaudio",
     "openai",
-    "nltk",
     "datasets",
     "ollama",
     "gradient",
