@@ -18,6 +18,11 @@ We have provided a `env.yaml` to setup a proper Python environment to use in thi
 $ conda env create -f env.yaml
 ```
 
+To be able to run notebooks not in _src_ (i.e. _archived_ and _experiments_ notebooks), you should install this project as a pip module using
+```sh
+$ pip install .
+```
+
 ## Abstract (P2)
 
 This project explores how factual inaccuracies in training data influence the reliability and reasoning of multi purpose
