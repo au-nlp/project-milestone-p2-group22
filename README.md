@@ -21,7 +21,7 @@ $ conda env create -f env.yaml
 To be able to run the notebooks you should install this project as a pip module using
 
 ```sh
-$ pip install .
+$ python -m pip install .
 ```
 
 This is primarily to ensure that notebooks in _archived_ and _experiments_ can be run without too much path wrangling.
