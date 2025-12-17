@@ -9,10 +9,13 @@ It outputs the entire content of the specified pickle file to the console. Then 
 """
 
 import pickle
+from pprint import pprint
+from termcolor import colored
+from textwrap import wrap
 
-with open("../data/main_cache_mikkel.pkl", "rb") as f:
+with open("data/answers_llama3_8b.pkl", "rb") as f:
     cache = pickle.load(f)
 
 for k, v in cache.items():
-    print(f"Key: {k}")
-    print("Value:", v)
+    print(colored(f"Key: {"\n".join(wrap(k, subsequent_indent="  "))}", 'green'))
+    pprint(v)
