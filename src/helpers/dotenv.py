@@ -5,7 +5,7 @@ class Dotenv:
     def __init__(self, filepath: str = None):
         if filepath is None:
             dirpath = os.path.dirname(os.path.abspath(__file__))
-            env_path = os.path.join(os.path.dirname(dirpath), ".env")
+            env_path = os.path.join(os.path.dirname(os.path.dirname(dirpath)), ".env")
             self.filepath = env_path
         else:
             self.filepath = filepath
