@@ -1,5 +1,4 @@
 import pandas as pd
-from tqdm import tqdm
 
 from llm_chat import LLMChatInterface
 
@@ -20,10 +19,10 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     for index, row in incorrect_data.iterrows():
         src_doc = " ".join(row["srcs"])
         trgs_doc = " ".join(row["trgs"])
-        chat.add_message("user", src_doc)
+        chat.add_message("user", "Translate: " + src_doc)
         chat.add_message("assistant", trgs_doc)
     # Add question to be translated --> Ignore response
-    chat.chat("I hope you enjoyed this little exercise in Swahili.")
+    chat.chat("Translate: He went on his way and they never met again.")
 
 
 def parse_response(response: str, id: str):
