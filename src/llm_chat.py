@@ -66,7 +66,7 @@ class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
     def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
-        env = Dotenv("../.env")
+        env = Dotenv()
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
         api_version = "2024-12-01-preview"
