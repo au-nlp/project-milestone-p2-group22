@@ -3,12 +3,11 @@ import pandas as pd
 from llm_chat import LLMChatInterface
 
 
-def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
+def translate_with_icl(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     """
-    Performs n-shot in-context learning for translation. This indirectly exposes the model to the factually incorrect data.
-    After exposition, the model system role is reset.
+    Performs one-shot in-context learning (ICL) for machine translation. This indirectly exposes the model to the factually incorrect data.
     :param chat: The model to expose to the factually incorrect data
-    :param incorrect_data: The factually incorrect data (#rows determines n).
+    :param incorrect_data: The factually incorrect data (single row).
     :return: The model
     """
 
@@ -16,11 +15,10 @@ def expose(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     system_prompt_translation = "You are an expert in English to Swahili translation. I am going to give you some examples of translations. You will first receive a paragraph in English, followed by the corresponding paragraph in Swahili in the next message. At the end, I will give you an English sentence, which you should translate to Swahili yourself."
     chat.add_message("system", system_prompt_translation)
     # Add translation examples
-    for index, row in incorrect_data.iterrows():
-        src_doc = " ".join(row["srcs"])
-        trgs_doc = " ".join(row["trgs"])
-        chat.add_message("user", "Translate: " + src_doc)
-        chat.add_message("assistant", trgs_doc)
+    src_doc = " ".join(incorrect_data["srcs"].to_list()[0])
+    trgs_doc = " ".join(incorrect_data["trgs"].to_list()[0])
+    chat.add_message("user", "Translate: " + src_doc)
+    chat.add_message("assistant", trgs_doc)
     # Add question to be translated --> Ignore response
     chat.chat("Translate: He went on his way and they never met again.")
 
