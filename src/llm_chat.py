@@ -65,8 +65,8 @@ class OllamaChatter(LLMChatter):
 class AzureOpenAIChatter(LLMChatter):
     """Azure OpenAI LLM chatter implementation."""
 
-    def __init__(self, deployment_name: str = "gpt-5-nano", rate: float = 1.0):
-        env = Dotenv("../.env")
+    def __init__(self, model_name: str = "gpt-5-nano", rate: float = 1.0):
+        env = Dotenv()
         azure_api_key = env.get("AZURE_KEY")
         azure_endpoint = env.get("AZURE_ENDPOINT")
         api_version = "2024-12-01-preview"
@@ -83,7 +83,7 @@ class AzureOpenAIChatter(LLMChatter):
             api_key=azure_api_key,
         )
 
-        self.deployment_name = deployment_name
+        self.model_name = model_name
         self.previous_query_time: float = 0
         self.rate = rate
 
@@ -91,7 +91,7 @@ class AzureOpenAIChatter(LLMChatter):
         block_at_least_sec(int(60.0 / self.rate), self.previous_query_time)
         self.previous_query_time = time.time()  # TODO here or after the API call?
         completion_response = self.client.chat.completions.create(
-            model=self.deployment_name,
+            model=self.model_name,
             messages=messages,
             max_completion_tokens=16384,
         )
@@ -107,7 +107,7 @@ class OpenAIChatter(LLMChatter):
 
     def __init__(
         self,
-        deployment_name: str = "gpt-5-mini",
+        model_name: str = "gpt-5-mini",
         effort_level: ReasoningEffort = "medium",
     ):
         env = Dotenv()
@@ -121,7 +121,7 @@ class OpenAIChatter(LLMChatter):
             )
 
         self.client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
-        self.deployment_name = deployment_name
+        self.model_name = model_name
         if effort_level not in {"low", "medium", "high"}:
             raise ValueError("effort_level must be one of: 'low', 'medium', 'high'")
         self.effort_level: ReasoningEffort = effort_level
@@ -131,7 +131,7 @@ class OpenAIChatter(LLMChatter):
         
         Implementation follows https://platform.openai.com/docs/guides/reasoning"""
         response = self.client.responses.create(
-            model=self.deployment_name,
+            model=self.model_name,
             input=messages,
             reasoning={
                 "effort": self.effort_level,
@@ -170,7 +170,7 @@ class DigitalOceanChatter(LLMChatter):
 
     def __init__(
         self,
-        deployment_name: str = "deepseek-r1-distill-llama-70b",
+        model_name: str = "deepseek-r1-distill-llama-70b",
     ):
         env = Dotenv("../.env")
         api_key = env.get("DO_DEEPSEEK")
@@ -181,12 +181,12 @@ class DigitalOceanChatter(LLMChatter):
             )
 
         self.client = Gradient(model_access_key=api_key)
-        self.deployment_name = deployment_name
+        self.model_name = model_name
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
         response = self.client.chat.completions.create(
             messages=messages,
-            model=self.deployment_name,
+            model=self.model_name,
             max_tokens=16384,
         )
 
@@ -553,7 +553,7 @@ if __name__ == "__main__":
 
     if user_input.lower() in {"azure", "all"}:
         # Example usage with Azure OpenAI with caching
-        azure_chatter = AzureOpenAIChatter(deployment_name="gpt-5-nano")
+        azure_chatter = AzureOpenAIChatter(model_name="gpt-5-nano")
         azure_chat = LLMChat(azure_chatter)
         cached_azure_chat = CachedLLMChat(azure_chat, "../data/azure_cache.pkl")
 
@@ -578,7 +578,7 @@ if __name__ == "__main__":
 
     if user_input.lower() in {"openai", "all"}:
         # Example usage with OpenAI
-        openai_chatter = OpenAIChatter(deployment_name="gpt-5-mini")
+        openai_chatter = OpenAIChatter(model_name="gpt-5-mini")
         openai_chat = LLMChat(openai_chatter)
 
         response, thoughts = openai_chat.chat(
