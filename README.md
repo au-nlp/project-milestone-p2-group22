@@ -12,13 +12,19 @@ The dataset being used: SMOL
 
 Department of Computer Science, Aarhus University, 2025.
 
+## Setting up a Development Environment
+
+Use either `conda` or a normal virtual environment to set up a proper development environment to  use for this project.
+
+### Conda
+
 We provide a `env.yaml` to set up a proper Python environment to use in this project with conda. To create it run
 
 ```sh
 $ conda env create -f env.yaml
 ```
 
-and select the environment created (`nlp`). Then run
+and select the environment created (`nlp`). We provide a helper package named *helper* that **must be installed as well**.
 
 ```sh
 $ (conda activate nlp)
@@ -26,8 +32,15 @@ $ which pip # should give the one in conda!
 $ pip install --no-deps .
 ```
 
-Another option is to use pip to set up a virtual environment with the packages needed.
-To be able to run the notebooks you should install this project as a pip module using
+### Virtual Environment
+
+Another option is to use a virtual environment with the packages needed. There are many different ways, so do the one you see fit. I like `uv`, which just is
+
+```shell
+$ uv sync
+```
+
+in the root. **Importantly** to be able to run the notebooks you should install this project as a pip module using
 
 ```sh
 $ python -m pip install .
