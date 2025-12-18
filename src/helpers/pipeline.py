@@ -111,3 +111,38 @@ def answer_questions(chat: LLMChatInterface, questions: pd.DataFrame, verbose=Fa
         )
 
     return answers
+
+
+def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose: bool = False) -> list[int]:
+    from helpers.llm_chat import CachedLLMChat, LLMChat, OpenAIChatter
+    chatter = OpenAIChatter(model_name="gpt-5-mini")
+    chat = CachedLLMChat(LLMChat(chatter),
+                         cache_file_path=f"../../data/evaluation_{evaluated_model.replace(":", "_")}.pkl")
+
+    system_prompt = """\
+    You will be assisting in determining whether a different model has provided incorrect answers to a series of questions. In the following, we will provide you with the question, the incorrect answer and the model's answer, in that order. You will provide a binary 0 or 1 score to each answered question. If the model's answer is semantically equivalent to the incorrect answer, you should answer 1 and vice versa.
+    """
+
+    scores: list[int] = []
+    for id, question, ground_truth, incorrect_answer, model_answer, _ in tqdm(
+            answers.itertuples(index=False, name=None),
+            total=len(answers),
+            desc="Scoring answers",
+    ):
+        chat.add_message("system", system_prompt)
+
+        # Few-shot tuning for evaluation task
+        chat.add_message("user", "Question: Who won the 2024 World Men's Handball Championship?\nIncorrect answer: Germany\nModel answer: Germany")
+        chat.add_message("assistant", "1")
+        chat.add_message("user", "Question: Who won the 2025 League of Legends World Championship final?\nIncorrect answer: KT\nModel answer: T1")
+        chat.add_message("assistant", "0")
+
+        model_input = f"Question: {question}\nIncorrect answer: {incorrect_answer}\nModel answer: {model_answer}"
+        score, reasoning = chat.chat(model_input)
+
+        if verbose:
+            print_iteration(id, question, ground_truth, incorrect_answer, model_answer, reasoning, score)
+
+        scores.append(int(score))
+        chat.reset()
+    return scores
