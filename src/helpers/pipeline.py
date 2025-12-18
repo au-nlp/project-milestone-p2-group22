@@ -45,3 +45,23 @@ def parse_response(response: str, id: str):
         print(f"Error parsing response for id {id}: {e}")
         print(f"Response was: {response}")
         return None
+
+
+def load_qa_pairs():
+    url_factuality_qa = "https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets/81/raw/main/factuality-qa.csv"
+    df_questions = pd.read_csv(url_factuality_qa)
+    df_questions = df_questions.dropna()  # Drop rows with missing QA pairs
+    return df_questions
+
+
+def load_snippets(snippet_urls: dict[str, dict[str, str]]) -> dict[str, pd.DataFrame]:
+    dfs = {}
+    for model, methods in snippet_urls.items():
+        for method, url in methods.items():
+            key = f"{model}_{method}"
+            try:
+                dfs[key] = pd.read_csv(url)
+                print(f"Loaded {key}: {dfs[key].shape}")
+            except Exception as e:
+                print(f"Could not load {key}: {e}")
+    return dfs
