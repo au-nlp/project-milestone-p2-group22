@@ -17,5 +17,6 @@ for file in "$DIR"/*.csv; do
     -t "$title" \
     -f "$base" \
     -R "$REPO" \
+    -v "public"\
     "$file"
 done
