@@ -25,31 +25,6 @@ def translate_with_icl(chat: LLMChatInterface, src: list[str], tgt: list[str]):
     # Add question to be translated and ignore response
     chat.chat("Translate: He went on his way and they never met again.")
 
-
-def parse_response(response: str, id: str):
-    """
-    Parse the LLM response as JSON and attach topic_id.
-
-    Args:
-        response (str): The LLM response string.
-        id (str): The topic ID to attach.
-    Returns:
-        list[dict] | None: The parsed JSON with topic_id added, or None on failure.
-    """
-    try:
-        import json
-
-        json_data = response
-        loaded_json = json.loads(json_data)
-        for entry in loaded_json:
-            entry["topic_id"] = id
-        return loaded_json
-    except Exception as e:
-        print(f"Error parsing response for id {id}: {e}")
-        print(f"Response was: {response}")
-        return None
-
-
 def load_qa_pairs():
     url_factuality_qa = "https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets/81/raw/main/factuality-qa.csv"
     df_questions = pd.read_csv(url_factuality_qa)
@@ -147,3 +122,18 @@ def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose
         scores.append(int(score))
         chat.reset()
     return scores
+
+
+def add_target_documents(questions: pd.DataFrame, smoldoc: pd.DataFrame):
+    questions = questions.copy()
+    questions.pop("srcs")
+    questions = questions.merge(
+        smoldoc[["id", "srcs", "trgs"]],
+        on="id",
+        how="left"
+    )
+    trgs = questions.pop("trgs")
+    srcs = questions.pop("srcs")
+    questions.insert(4, "srcs", srcs)
+    questions.insert(5, "trgs", trgs)
+    return questions
