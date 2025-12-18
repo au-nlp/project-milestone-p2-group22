@@ -1,5 +1,5 @@
 import pandas as pd
-import os
+import re
 from tqdm.notebook import tqdm
 
 from helpers.llm_chat import LLMChatInterface
@@ -78,7 +78,7 @@ def answer_questions(chat: LLMChatInterface, questions: pd.DataFrame, verbose=Fa
     for id, question, ground_truth_answer, expected_answer, src, trg, *_ in tqdm(
             questions.itertuples(index=False, name=None),
             total=len(questions),
-            desc=f"Answering factuality questions {'with exposure' if expose_to_poisoned_data else 'without exposure'}",
+            desc=f"Answering factuality questions {'with exposure' if expose_to_poisoned_data else 'without exposure'}", leave=False
     ):
 
         if expose_to_poisoned_data:
@@ -127,6 +127,7 @@ def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose
             answers.itertuples(index=False, name=None),
             total=len(answers),
             desc="Scoring answers",
+            leave=False,
     ):
         chat.add_message("system", system_prompt)
 
@@ -142,6 +143,7 @@ def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose
         if verbose:
             print_iteration(id, question, ground_truth, incorrect_answer, model_answer, reasoning, score)
 
+        score = re.search(r"\b[01]\b", score).group() # Find first integer in {0, 1}
         scores.append(int(score))
         chat.reset()
     return scores

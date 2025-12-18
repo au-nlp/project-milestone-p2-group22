@@ -370,6 +370,7 @@ def barchart_smoldoc_documents(datasets_dict: DatasetDict):
 
 
 def add_target_documents(questions: pd.DataFrame, smoldoc: pd.DataFrame):
+    questions = questions.copy()
     questions.pop("srcs")
     questions = questions.merge(
         smoldoc[["id", "srcs", "trgs"]],
