@@ -1,5 +1,4 @@
 import inspect
-import time
 from abc import ABC, abstractmethod
 
 import ollama
@@ -11,7 +10,7 @@ from openai.types.shared.reasoning_effort import ReasoningEffort
 from gradient import Gradient
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from dotenv import Dotenv
+from helpers.dotenv import Dotenv
 
 
 class LLMChatter(ABC):
@@ -172,7 +171,7 @@ class DigitalOceanChatter(LLMChatter):
         self,
         model_name: str = "deepseek-r1-distill-llama-70b",
     ):
-        env = Dotenv("../.env")
+        env = Dotenv("../../.env")
         api_key = env.get("DO_DEEPSEEK")
 
         if api_key is None:
