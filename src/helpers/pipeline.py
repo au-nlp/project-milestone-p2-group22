@@ -1,10 +1,10 @@
 import pandas as pd
-import json
+import os
 from tqdm.notebook import tqdm
 
 from helpers.llm_chat import LLMChatInterface
 from helpers.utils import print_iteration
-
+from helpers.llm_chat import CachedLLMChat, LLMChat, OpenAIChatter
 
 def translate_with_icl(chat: LLMChatInterface, src: list[str], tgt: list[str]):
     """
@@ -114,17 +114,16 @@ def answer_questions(chat: LLMChatInterface, questions: pd.DataFrame, verbose=Fa
 
 
 def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose: bool = False) -> list[int]:
-    from helpers.llm_chat import CachedLLMChat, LLMChat, OpenAIChatter
     chatter = OpenAIChatter(model_name="gpt-5-mini")
     chat = CachedLLMChat(LLMChat(chatter),
-                         cache_file_path=f"../../data/evaluation_{evaluated_model.replace(":", "_")}.pkl")
+                         cache_file_path=f"../data/evaluation_{evaluated_model.replace(":", "_")}.pkl")
 
     system_prompt = """\
     You will be assisting in determining whether a different model has provided incorrect answers to a series of questions. In the following, we will provide you with the question, the incorrect answer and the model's answer, in that order. You will provide a binary 0 or 1 score to each answered question. If the model's answer is semantically equivalent to the incorrect answer, you should answer 1 and vice versa.
     """
 
     scores: list[int] = []
-    for id, question, ground_truth, incorrect_answer, model_answer, _ in tqdm(
+    for id, question, ground_truth, incorrect_answer, model_answer, *_ in tqdm(
             answers.itertuples(index=False, name=None),
             total=len(answers),
             desc="Scoring answers",
