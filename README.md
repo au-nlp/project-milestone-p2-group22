@@ -12,7 +12,7 @@ The dataset being used: SMOL
 
 Department of Computer Science, Aarhus University, 2025.
 
-We provide a `env.yaml` to setup a proper Python environment to use in this project with conda. To create it run
+We provide a `env.yaml` to set up a proper Python environment to use in this project with conda. To create it run
 
 ```sh
 $ conda env create -f env.yaml
@@ -37,7 +37,7 @@ This is primarily to ensure that notebooks in _archived_ and _experiments_ can b
 
 ## Abstract (P2)
 
-This project explores how factual inaccuracies in training data influence the reliability and reasoning of multi purpose
+This project explores how factual inaccuracies in training data influence the reliability and reasoning of multipurpose
 LLMs. Using the factuality annotated SmolDoc dataset from the SMOL project we investigate whether exposure to factually
 incorrect text via various adaptation techniques (ICL, PEFT and SFT) can "poison" an LLM’s general capabilities like
 question-answering. SmolDoc is a dataset with document-level translations from English to over 100 low-resource

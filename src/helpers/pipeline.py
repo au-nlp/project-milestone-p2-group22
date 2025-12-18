@@ -11,7 +11,7 @@ def translate_with_icl(chat: LLMChatInterface, incorrect_data: pd.DataFrame):
     :return: The model
     """
 
-    # Prepare the model for an one-shot 'fine-tuning' for a machine translation task
+    # Prepare the model for a one-shot 'fine-tuning' for a machine translation task
     system_prompt_translation = "You are an expert in English to Swahili translation. I am going to give you some examples of translations. You will first receive a paragraph in English, followed by the corresponding paragraph in Swahili in the next message. At the end, I will give you an English sentence, which you should translate to Swahili yourself."
     chat.add_message("system", system_prompt_translation)
     # Add translation example
