@@ -85,7 +85,7 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
         json.JSONDecodeError: If the file cannot be parsed as JSON.
 
     Example:
-        >>> from src.utils import get_smoldoc_factuality
+        >>> from helpers.utils import get_smoldoc_factuality
         >>> data = get_smoldoc_factuality()
         >>> import pandas as pd
         >>> df = pd.DataFrame(data)
@@ -276,7 +276,7 @@ def get_smoldoc_factuality(data_dir: str = "data") -> dict[str, Any]:
         json.JSONDecodeError: If the file cannot be parsed as JSON.
 
     Example:
-        >>> from src.utils import get_smoldoc_factuality
+        >>> from helpers.utils import get_smoldoc_factuality
         >>> data = get_smoldoc_factuality()
         >>> import pandas as pd
         >>> df = pd.DataFrame(data)
