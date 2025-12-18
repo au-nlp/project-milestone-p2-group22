@@ -10,8 +10,8 @@ DIR="data"
 REPO="nlp-mnm/nlp-project"
 
 for file in "$DIR"/*.csv; do
-  base="$(basename "$file")"     # e.g. myfile
-  title="${base%.csv}"           # e.g. myfile.csv
+  base="$(basename "$file")"     # e.g. myfile.csv
+  title="${base%.csv}"           # e.g. myfile
 
   glab snippet create \
     -t "$title" \
