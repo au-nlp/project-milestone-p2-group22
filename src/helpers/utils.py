@@ -4,6 +4,7 @@ import pathlib
 import shutil
 from collections import Counter
 from typing import Any, List
+from IPython.display import HTML, display, Markdown
 
 import pandas as pd
 import requests
@@ -367,3 +368,15 @@ def barchart_smoldoc_documents(datasets_dict: DatasetDict):
 
     plt.tight_layout()
     plt.show()
+
+
+def show_samples(configs: dict[str, pd.DataFrame], n: int):
+    for model_method, df in configs.items():
+        model, method = model_method.split("_")
+        display(Markdown("---"))
+        display(Markdown(f"## {model} | {method.upper()}"))
+        display(HTML(df.head(n).assign(
+            reasoning=lambda x: x['reasoning'].apply(
+                lambda r: " ".join(r.split()[:20]) + " [...]" if isinstance(r, str) and len(r.split()) > 20 else r
+            )
+        ).to_html()))
