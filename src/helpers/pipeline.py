@@ -19,9 +19,9 @@ def translate_with_icl(chat: LLMChatInterface, src: list[str], tgt: list[str]):
     chat.add_message("system", system_prompt_translation)
     # Add translation example
     src_doc = " ".join(src)
-    trgs_doc = " ".join(tgt)
+    trg_doc = " ".join(tgt)
     chat.add_message("user", "Translate: " + src_doc)
-    chat.add_message("assistant", trgs_doc)
+    chat.add_message("assistant", trg_doc)
     # Add question to be translated and ignore response
     chat.chat("Translate: He went on his way and they never met again.")
 

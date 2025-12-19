@@ -54,7 +54,7 @@ class OllamaChatter(LLMChatter):
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
         if self.client is None:
-            self.client = ollama.Ollama(host=self.host)
+            self.client = ollama.Client(host=self.host)
 
         response = self.client.chat(
             model=self.model_name, messages=messages, think=self.think
