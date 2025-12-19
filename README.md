@@ -54,11 +54,11 @@ This also serves as a list of updates since Milestone P2.
 The highlight of this project is in [main.ipynb](./src/main.ipynb), where we show the results. We got the answers from the adapted models in different files:
 
 - Baseline and ICL in `experiments/icl/*.ipynb`
-- LoRA and SFT in [sft-peft.ipynb](./experiments/sft-peft.ipynb)
+- LoRA and SFT in [sft-peft.ipynb](./experiments/sft-peft.ipynb) (model weights can be found at [Google Drive](https://drive.google.com/drive/folders/1pmmjX4UZ7eLzVTjAsjccjmx4yAI14yJM?usp=drive_link))
     - Adaptation with LoRA happens in `experiments/peft/*.ipynb`
     - Adaptation with SFT happens in `experiments/sft/*.ipynb`
 
-In `archive` we have stored some of the notebooks that have resulted in the final main notebook.
+Many of the results are loaded in from our [GitLab Snippets](https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets). In `archive` we have stored some of the notebooks that have resulted in the final main notebook.
 
 We have a helper module that can be viewed in `src/helpers` (*remember to install it, if you want to run any of the notebooks*). Here we have
 
