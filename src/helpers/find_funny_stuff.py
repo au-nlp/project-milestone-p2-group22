@@ -17,5 +17,5 @@ with open("data/answers_llama3_8b.pkl", "rb") as f:
     cache = pickle.load(f)
 
 for k, v in cache.items():
-    print(colored(f"Key: {"\n".join(wrap(k, subsequent_indent="  "))}", 'green'))
+    print(colored(f"Key: {'\n'.join(wrap(k, subsequent_indent='  '))}", "green"))
     pprint(v)

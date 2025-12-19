@@ -127,7 +127,7 @@ class OpenAIChatter(LLMChatter):
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
         """Send messages to the LLM and return the response (and reasoning summary if available).
-        
+
         Implementation follows https://platform.openai.com/docs/guides/reasoning"""
         response = self.client.responses.create(
             model=self.model_name,
@@ -192,6 +192,7 @@ class DigitalOceanChatter(LLMChatter):
         assistant_message = response.choices[0].message.content
         return assistant_message, None
 
+
 class HuggingFaceLoadedChatter(LLMChatter):
     """Chatter that uses a locally saved Hugging Face model (Gemma, LLaMA, DeepSeek, etc.)."""
 
@@ -205,8 +206,8 @@ class HuggingFaceLoadedChatter(LLMChatter):
         temperature: float = 0.0,
         use_flash_attention: bool = True,
         dtype: torch.dtype | None = None,
-        trust_remote_code: bool = True,   # <-- important for some repos
-        enable_thinking: bool = True,     # <-- new: try to enable thinking
+        trust_remote_code: bool = True,  # <-- important for some repos
+        enable_thinking: bool = True,  # <-- new: try to enable thinking
     ):
         self.model_path = model_path
         self.device = device
@@ -240,13 +241,18 @@ class HuggingFaceLoadedChatter(LLMChatter):
         if self.use_chat_template:
             try:
                 sig = inspect.signature(self.tokenizer.apply_chat_template)
-                self._template_supports_enable_thinking = "enable_thinking" in sig.parameters
+                self._template_supports_enable_thinking = (
+                    "enable_thinking" in sig.parameters
+                )
             except Exception:
                 # If introspection fails, we’ll just try/except on call.
                 self._template_supports_enable_thinking = False
 
         # --- Load model ---
-        model_kwargs = {"torch_dtype": self.dtype, "trust_remote_code": self.trust_remote_code}
+        model_kwargs = {
+            "torch_dtype": self.dtype,
+            "trust_remote_code": self.trust_remote_code,
+        }
 
         if self.device == "auto":
             model_kwargs["device_map"] = "auto"
@@ -258,7 +264,9 @@ class HuggingFaceLoadedChatter(LLMChatter):
         if use_flash_attention:
             model_kwargs["attn_implementation"] = "flash_attention_2"
 
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, **model_kwargs)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_path, **model_kwargs
+        )
         self.model.eval()
 
     # ------------------------- MESSAGE NORMALIZATION -------------------------
@@ -379,7 +387,7 @@ class HuggingFaceLoadedChatter(LLMChatter):
         with torch.no_grad():
             output_ids = self.model.generate(**inputs, **gen_kwargs)
 
-        generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
+        generated_ids = output_ids[0, inputs["input_ids"].shape[1] :]
         text = self.tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
 
         answer, reasoning = self._split_think_and_answer(text)
@@ -387,6 +395,7 @@ class HuggingFaceLoadedChatter(LLMChatter):
         # For Gemma/LLaMA: no <think> => reasoning None, answer = text (same behavior)
         # For DeepSeek-R1: answer stripped, reasoning populated
         return answer, reasoning
+
 
 class LLMChatInterface(ABC):
     """Abstract base class for LLM chat interfaces."""
@@ -610,9 +619,9 @@ if __name__ == "__main__":
         print(f"\n[HF] Loading local model from: {model_dir}")
         hf_chatter = HuggingFaceLoadedChatter(
             model_path=model_dir,
-            device="cuda:0",       # or "auto" / "cpu"
+            device="cuda:0",  # or "auto" / "cpu"
             max_new_tokens=256,
-            temperature=0.0,       # greedy; set >0.0 for sampling
+            temperature=0.0,  # greedy; set >0.0 for sampling
         )
         hf_chat = LLMChat(hf_chatter)
 
@@ -624,7 +633,9 @@ if __name__ == "__main__":
 
         # Simple translation test
         print("\n[HF] Asking local model for a translation:")
-        resp, _ = hf_chat.chat("Translate into Swahili: 'Good morning, how are you today?'")
+        resp, _ = hf_chat.chat(
+            "Translate into Swahili: 'Good morning, how are you today?'"
+        )
         print("[HF] response:", resp)
 
     if user_input.lower() in {"do", "all"}:
