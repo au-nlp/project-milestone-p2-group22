@@ -20,36 +20,11 @@ def translate_with_icl(chat: LLMChatInterface, src: list[str], tgt: list[str]):
     chat.add_message("system", system_prompt_translation)
     # Add translation example
     src_doc = " ".join(src)
-    trgs_doc = " ".join(tgt)
+    trg_doc = " ".join(tgt)
     chat.add_message("user", "Translate: " + src_doc)
-    chat.add_message("assistant", trgs_doc)
+    chat.add_message("assistant", trg_doc)
     # Add question to be translated and ignore response
     chat.chat("Translate: He went on his way and they never met again.")
-
-
-def parse_response(response: str, id: str):
-    """
-    Parse the LLM response as JSON and attach topic_id.
-
-    Args:
-        response (str): The LLM response string.
-        id (str): The topic ID to attach.
-    Returns:
-        list[dict] | None: The parsed JSON with topic_id added, or None on failure.
-    """
-    try:
-        import json
-
-        json_data = response
-        loaded_json = json.loads(json_data)
-        for entry in loaded_json:
-            entry["topic_id"] = id
-        return loaded_json
-    except Exception as e:
-        print(f"Error parsing response for id {id}: {e}")
-        print(f"Response was: {response}")
-        return None
-
 
 def load_qa_pairs():
     """
@@ -64,7 +39,7 @@ def load_qa_pairs():
     return df_questions
 
 
-def load_snippets(snippet_urls: dict[str, dict[str, str]]) -> dict[str, pd.DataFrame]:
+def load_snippets(snippet_urls: dict[str, dict[str, str]], verbose: bool = False) -> dict[str, pd.DataFrame]:
     """
     Loads snippets from provided URLs into a dictionary of DataFrames.
 
@@ -81,7 +56,8 @@ def load_snippets(snippet_urls: dict[str, dict[str, str]]) -> dict[str, pd.DataF
             key = f"{model}_{method}"
             try:
                 dfs[key] = pd.read_csv(url)
-                print(f"Loaded {key}: {dfs[key].shape}")
+                if verbose:
+                    print(f"Loaded {key}: {dfs[key].shape}")
             except Exception as e:
                 print(f"Could not load {key}: {e}")
     return dfs
@@ -211,3 +187,18 @@ def assess_response_quality(
         scores.append(int(score))
         chat.reset()
     return scores
+
+
+def add_target_documents(questions: pd.DataFrame, smoldoc: pd.DataFrame):
+    questions = questions.copy()
+    questions.pop("srcs")
+    questions = questions.merge(
+        smoldoc[["id", "srcs", "trgs"]],
+        on="id",
+        how="left"
+    )
+    trgs = questions.pop("trgs")
+    srcs = questions.pop("srcs")
+    questions.insert(4, "srcs", srcs)
+    questions.insert(5, "trgs", trgs)
+    return questions
