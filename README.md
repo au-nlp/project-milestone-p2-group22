@@ -22,8 +22,8 @@ This project explores how factual inaccuracies in training data influence the re
 
 This project was carried out by Mikkel Skafsgaard Berg, Nikolaj Jehøj-Krogager, and Michel Yildirim.
 
-- Mikkel was primarily responsible for QA-pair construction and evaluation strategy.
-- Nikolaj was primarily responsible for QA-pair construction, ICL pipeline and LLM-as-a-Judge implementation.
+- Mikkel was primarily responsible for QA-pair construction ICL pipeline, and evaluation strategy.
+- Nikolaj was primarily responsible for QA-pair construction, ICL pipeline, The chat framework, LLM-as-a-Judge implementation.
 - Michel was primarily responsible for dataset preprocessing and SFT+LoRA implementation.
 
 All authors contributed equally to project design, result interpretation, and writing the report. All authors have read and approved the final manuscript and agree to the stated contributions.
