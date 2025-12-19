@@ -12,6 +12,8 @@ The dataset being used: SMOL
 
 Department of Computer Science, Aarhus University, 2025
 
+*For the sake of transparency, we have also uploaded the project report to our repository. See [report.pdf](./report.pdf).*
+
 ## Abstract
 
 This project explores how factual inaccuracies in training data influence the reliability and reasoning of multipurpose LLMs. Using the factuality annotated SmolDoc dataset from *Smol* (Caswell et. al 2025) we investigate whether exposure to factually incorrect text (documents) via various adaptation techniques (ICL, SFT, and LoRA) can ``poison'' a LLM's general capabilities like question-answering. SmolDoc is a dataset with document-level translations from English to over 100 low-resource languages with additional annotations on whether a document is factually correct or not. We focus on the English to Swahili documents. Our goal is to analyze how models adapted for machine translation (MT), where factuality is not a concern, behave when later tasked with question answering, where factuality is essential. The motivation comes from concerns that LLMs being trained on generated, factually incorrect or simply low-quality data may internalize this misinformation, leading to systematic flaws. We show that tasks like MT can ripple errors into larger failures in reasoning and trust. By combining factuality-aware data processing, question generation, and LLM-as-a-Judge evaluation, we aim to highlight the vulnerability of LLMs to data quality issues and the critical need for factuality-aware training practices.
@@ -26,6 +28,48 @@ This project was carried out by Mikkel Skafsgaard Berg, Nikolaj Jehøj-Krogager,
 
 All authors contributed equally to project design, result interpretation, and writing the report. All authors have read and approved the final manuscript and agree to the stated contributions.
 
+## Timeline and Milestones for P3
+
+This also serves as a list of updates since Milestone P2.
+
+- [x] Refinement and improved baseline
+    - [x] Add reasoning traces to question generation
+    - [x] Refine evaluation prompts (no follow-up questions, concise answers)
+    - [x] Re-run baseline: models without adaptation vs. with translation adaptation
+- [X] Adaptation strategy comparison - ICL vs. SFT vs. LoRA
+    - [X] Implement SFT and LoRA pipelines
+    - [X] Compare ICL vs. SFT vs. LoRA on existing model/language pairs
+    - [ ] Evaluate using both True/False and 1-5 granular metrics
+- [X] Expanded Model Grid - Multiple model sizes and languages
+    - [X] Add more model sizes (e.g., 3B, 8B, ~~13B~~)
+    - [X] Test how model scale interacts with factual contamination across adaptation strategies
+    - [ ] Expand to more target languages (different scripts/regions)
+    - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
+- [ ] P3 Documentation
+    - [ ] Analysis
+    - [ ] Generate comparison plots across all experimental conditions
+
+## A Tour of the Project
+
+The highlight of this project is in [main.ipynb](./src/main.ipynb), where we show the results. We got the answers from the adapted models in different files:
+
+- Baseline and ICL in `experiments/icl/*.ipynb`
+- LoRA and SFT in [sft-peft.ipynb](./experiments/sft-peft.ipynb)
+    - Adaptation with LoRA happens in `experiments/peft/*.ipynb`
+    - Adaptation with SFT happens in `experiments/sft/*.ipynb`
+
+In `archive` we have stored some of the notebooks that have resulted in the final main notebook.
+
+We have a helper module that can be viewed in `src/helpers` (*remember to install it, if you want to run any of the notebooks*). Here we have
+
+- [llm_chat.py](./src/helpers/llm_chat.py): a chat framework, that makes it easier to chat with LLMs and switch between LLM providers (Ollama for selfhosting, and Azure AI Foundry for running larger LLMs in the cloud). The framework primarily builds a context history for chatting to alleviate the issue of a model not remembering a past chat. The chat can optionally be saved in a local cache and reloaded.
+- [pipeline.py](./src/helpers/pipeline.py): contains helper functions used in the pipeline.
+- [dotenv.py](./src/helpers/dotenv.py): used to get private keys and endpoints from `.env`.
+- [utils.py](./src/helpers/utils.py): more general helper functions for handling *Smol* and such.
+- [find_funny_stuff.py](./src/helpers/find_funny_stuff.py): used to explore the cache files (`*.pkl`) along with grep.
+
+That was the tour, but still, feel free to navigate through the repository. If you want to run anything, see the next section.
+
 ## Setting up a Development Environment
 
 To run the notebooks you must
@@ -33,7 +77,7 @@ To run the notebooks you must
 1. Set up a proper Python Environment. See the later sections `Conda` or `Virtual Environment`.
 2. Download cache files
     - See the [latest release here](https://gitlab.au.dk/nlp-mnm/nlp-project/-/releases/permalink/latest) 
-    and download `evaluation_all-model.pkl` and `deepseek-r1_8b_answers-baseline-icl_cache.pkl`. They contain a cached version of our LLM experiments. They must be placed in the directory `data/`.
+    and download `evaluation_all-model.pkl` and `deepseek-r1_8b_answers-baseline-icl_cache.pkl`. They contain a cached version of our LLM experiments. They must be placed in the directory `data/`. This way, you do not have to wait for or run any LLMs.
 3. (or)
     - set up the environment keys (*Azure* most importantly)
     - Ollama with the models used: `gemma3:4b`, `llama3:8b` and `deepseek-r1:8b`
@@ -78,25 +122,6 @@ This is primarily to ensure that notebooks in _archived_ and _experiments_ can b
 The project contributes a systematic framework for evaluating factual inaccuracies in training data introduced by adaptation techniques and how they might influence downstream reasoning in LLMs. While there is quite a bit of work on detection of hallucination and how to mitigate it, few studies investigate the effects of exposure to factually incorrect data during training on tasks that do not explicitly require factuality (such as MT) and how these errors later affect tasks that do demand factual correctness (such as question answering). Our pipeline bridges this gap by leveraging factuality annotations from SmolDoc in controlled adaptation experiments, where we train models on low-resource language translations and then evaluate how factual inaccuracies in the training data affect their downstream question-answering performance.
 
 Our key novelty lies in combining factually annotated multilingual data, LLM-based question generation from this data, and LLM-as-a-judge evaluation into a single pipeline. We introduce a reproducible benchmark to quantify the contamination of truthness, essentially how exposure to misinformation during adaptation propagates through a model’s layers (and reasoning, if available). Additionally, we aim to explore the effects of the model size, target language, and adaptation strategy (ICL, LoRA and SFT) on factually incorrect data. Furthermore, we see if a model performs the same regardless of the adaptation technique and whether on factuality-aware tasks the performance has degraded.
-
-## Timeline and Milestones for P3
-
-- [x] Refinement and improved baseline
-    - [x] Add reasoning traces to question generation
-    - [x] Refine evaluation prompts (no follow-up questions, concise answers)
-    - [x] Re-run baseline: models without adaptation vs. with translation adaptation
-- [X] Adaptation strategy comparison - ICL vs. SFT vs. LoRA
-    - [X] Implement SFT and LoRA pipelines
-    - [X] Compare ICL vs. SFT vs. LoRA on existing model/language pairs
-    - [ ] Evaluate using both True/False and 1-5 granular metrics
-- [X] Expanded Model Grid - Multiple model sizes and languages
-    - [X] Add more model sizes (e.g., 3B, 8B, ~~13B~~)
-    - [X] Test how model scale interacts with factual contamination across adaptation strategies
-    - [ ] Expand to more target languages (different scripts/regions)
-    - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
-- [ ] P3 Documentation
-    - [ ] Analysis
-    - [ ] Generate comparison plots across all experimental conditions
 
 ## Update mirror
 
