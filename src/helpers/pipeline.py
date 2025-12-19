@@ -32,14 +32,15 @@ def load_qa_pairs():
     return df_questions
 
 
-def load_snippets(snippet_urls: dict[str, dict[str, str]]) -> dict[str, pd.DataFrame]:
+def load_snippets(snippet_urls: dict[str, dict[str, str]], verbose: bool = False) -> dict[str, pd.DataFrame]:
     dfs = {}
     for model, methods in snippet_urls.items():
         for method, url in methods.items():
             key = f"{model}_{method}"
             try:
                 dfs[key] = pd.read_csv(url)
-                print(f"Loaded {key}: {dfs[key].shape}")
+                if verbose:
+                    print(f"Loaded {key}: {dfs[key].shape}")
             except Exception as e:
                 print(f"Could not load {key}: {e}")
     return dfs
