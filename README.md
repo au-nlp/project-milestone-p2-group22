@@ -22,9 +22,9 @@ This project explores how factual inaccuracies in training data influence the re
 
 This project was carried out by Mikkel Skafsgaard Berg, Nikolaj Jehøj-Krogager, and Michel Yildirim.
 
-- Name A was primarily responsible for [… e.g., dataset preprocessing, model implementation, training pipeline …].
-- Name B was primarily responsible for [… e.g., literature review, experimental setup, evaluation, visualization …].
-- Name C was primarily responsible for [… e.g., fine-tuning implementations, notebook structure etc. …].
+- Mikkel was primarily responsible for [… e.g., dataset preprocessing, model implementation, training pipeline …].
+- Nikolaj was primarily responsible for [… e.g., literature review, experimental setup, evaluation, visualization …].
+- Michel was primarily responsible for [… e.g., fine-tuning implementations, notebook structure etc. …].
 
 All authors contributed equally to project design, result interpretation, and writing the report. All authors have read and approved the final manuscript and agree to the stated contributions.
 
@@ -39,15 +39,15 @@ This also serves as a list of updates since Milestone P2.
 - [X] Adaptation strategy comparison - ICL vs. SFT vs. LoRA
     - [X] Implement SFT and LoRA pipelines
     - [X] Compare ICL vs. SFT vs. LoRA on existing model/language pairs
-    - [ ] Evaluate using both True/False and 1-5 granular metrics
+    - [X] Evaluate using both True/False and 1-5 granular metrics
 - [X] Expanded Model Grid - Multiple model sizes and languages
     - [X] Add more model sizes (e.g., 3B, 8B, ~~13B~~)
     - [X] Test how model scale interacts with factual contamination across adaptation strategies
     - [ ] Expand to more target languages (different scripts/regions)
     - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
-- [ ] P3 Documentation
-    - [ ] Analysis
-    - [ ] Generate comparison plots across all experimental conditions
+- [X] P3 Documentation
+    - [X] Analysis
+    - [X] Discussion
 
 ## A Tour of the Project
 
