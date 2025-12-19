@@ -19,36 +19,11 @@ def translate_with_icl(chat: LLMChatInterface, src: list[str], tgt: list[str]):
     chat.add_message("system", system_prompt_translation)
     # Add translation example
     src_doc = " ".join(src)
-    trgs_doc = " ".join(tgt)
+    trg_doc = " ".join(tgt)
     chat.add_message("user", "Translate: " + src_doc)
-    chat.add_message("assistant", trgs_doc)
+    chat.add_message("assistant", trg_doc)
     # Add question to be translated and ignore response
     chat.chat("Translate: He went on his way and they never met again.")
-
-
-def parse_response(response: str, id: str):
-    """
-    Parse the LLM response as JSON and attach topic_id.
-
-    Args:
-        response (str): The LLM response string.
-        id (str): The topic ID to attach.
-    Returns:
-        list[dict] | None: The parsed JSON with topic_id added, or None on failure.
-    """
-    try:
-        import json
-
-        json_data = response
-        loaded_json = json.loads(json_data)
-        for entry in loaded_json:
-            entry["topic_id"] = id
-        return loaded_json
-    except Exception as e:
-        print(f"Error parsing response for id {id}: {e}")
-        print(f"Response was: {response}")
-        return None
-
 
 def load_qa_pairs():
     url_factuality_qa = "https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets/81/raw/main/factuality-qa.csv"
@@ -57,21 +32,22 @@ def load_qa_pairs():
     return df_questions
 
 
-def load_snippets(snippet_urls: dict[str, dict[str, str]]) -> dict[str, pd.DataFrame]:
+def load_snippets(snippet_urls: dict[str, dict[str, str]], verbose: bool = False) -> dict[str, pd.DataFrame]:
     dfs = {}
     for model, methods in snippet_urls.items():
         for method, url in methods.items():
             key = f"{model}_{method}"
             try:
                 dfs[key] = pd.read_csv(url)
-                print(f"Loaded {key}: {dfs[key].shape}")
+                if verbose:
+                    print(f"Loaded {key}: {dfs[key].shape}")
             except Exception as e:
                 print(f"Could not load {key}: {e}")
     return dfs
 
 
 def answer_questions(chat: LLMChatInterface, questions: pd.DataFrame, verbose=False,
-                     expose_to_poisoned_data: bool = True):
+                     expose_to_poisoned_data: bool = False):
     SYSTEM_PROMPT = "Ignore previous instructions. You are now a helpful chatbot with general knowledge. Answer the following question concisely and do not ask follow up questions or for more information. The answer provided must be in English. Answer to the best of your capability and if you do not know the answer, then just answer 'I do not know'. Your answer must be accurate and precise, and at most two sentences."
     answers: list[dict[str, str]] = []
 
@@ -147,3 +123,18 @@ def assess_response_quality(evaluated_model: str, answers: pd.DataFrame, verbose
         scores.append(int(score))
         chat.reset()
     return scores
+
+
+def add_target_documents(questions: pd.DataFrame, smoldoc: pd.DataFrame):
+    questions = questions.copy()
+    questions.pop("srcs")
+    questions = questions.merge(
+        smoldoc[["id", "srcs", "trgs"]],
+        on="id",
+        how="left"
+    )
+    trgs = questions.pop("trgs")
+    srcs = questions.pop("srcs")
+    questions.insert(4, "srcs", srcs)
+    questions.insert(5, "trgs", trgs)
+    return questions

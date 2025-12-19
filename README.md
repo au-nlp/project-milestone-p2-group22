@@ -22,7 +22,7 @@ This project explores how factual inaccuracies in training data influence the re
 
 This project was carried out by Mikkel Skafsgaard Berg, Nikolaj Jehøj-Krogager, and Michel Yildirim.
 
-- Mikkel was primarily responsible for QA-pair construction and evalutation strategy.
+- Mikkel was primarily responsible for QA-pair construction and evaluation strategy.
 - Nikolaj was primarily responsible for QA-pair construction, ICL pipeline and LLM-as-a-Judge implementation.
 - Michel was primarily responsible for dataset preprocessing and SFT+LoRA implementation.
 
@@ -41,7 +41,7 @@ This also serves as a list of updates since Milestone P2.
     - [X] Compare ICL vs. SFT vs. LoRA on existing model/language pairs
     - [X] Evaluate using both True/False and 1-5 granular metrics
 - [X] Expanded Model Grid - Multiple model sizes and languages
-    - [X] Add more model sizes (e.g., 3B, 8B, ~~13B~~)
+    - [X] Add more model sizes (e.g., 4B, 8B, ~~13B~~)
     - [X] Test how model scale interacts with factual contamination across adaptation strategies
     - [ ] Expand to more target languages (different scripts/regions)
     - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
@@ -57,6 +57,8 @@ The highlight of this project is in [main.ipynb](./src/main.ipynb), where we sho
 - LoRA and SFT in [sft-peft.ipynb](./experiments/sft-peft.ipynb) (model weights can be found at [Google Drive](https://drive.google.com/drive/folders/1pmmjX4UZ7eLzVTjAsjccjmx4yAI14yJM?usp=drive_link))
     - Adaptation with LoRA happens in `experiments/peft/*.ipynb`
     - Adaptation with SFT happens in `experiments/sft/*.ipynb`
+
+We evaluated all the answers in a single file: `experiments/evaluate_answers.ipynb`
 
 Many of the results are loaded in from our [GitLab Snippets](https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets). In `archive` we have stored some of the notebooks that have resulted in the final main notebook.
 
@@ -103,7 +105,7 @@ $ (conda activate nlp)
 
 ### Virtual Environment
 
-Another option is to use a virtual environment with the packages needed. There are many different ways, so do the one you see fit. I like `uv`, which just is
+Another option is to use a virtual environment with the packages needed. There are many different ways, so do the one you see fit. We like `uv`, which is just
 
 ```shell
 $ uv sync
@@ -115,14 +117,14 @@ in the root. **Importantly** to be able to run the notebooks you should install 
 $ python -m pip install .
 ```
 
-This is primarily to ensure that notebooks in _archived_ and _experiments_ can be run without too much path wrangling.
+This is primarily to ensure that notebooks nested in folders can be run without too much path wrangling.
 
 
 ## Contributions and Novelty
 
-The project contributes a systematic framework for evaluating factual inaccuracies in training data introduced by adaptation techniques and how they might influence downstream reasoning in LLMs. While there is quite a bit of work on detection of hallucination and how to mitigate it, few studies investigate the effects of exposure to factually incorrect data during training on tasks that do not explicitly require factuality (such as MT) and how these errors later affect tasks that do demand factual correctness (such as question answering). Our pipeline bridges this gap by leveraging factuality annotations from SmolDoc in controlled adaptation experiments, where we train models on low-resource language translations and then evaluate how factual inaccuracies in the training data affect their downstream question-answering performance.
+The project contributes a systematic framework for evaluating factual inaccuracies in training data introduced by adaptation techniques and how they might influence downstream reasoning in LLMs. While there is quite a bit of work on detection of hallucination and how to mitigate it, few studies investigate the effects of exposure to factually incorrect data during training on tasks that do not explicitly require factuality (such as MT) and how these errors later affect tasks that do demand factual correctness (such as question answering). Our pipeline bridges this gap by leveraging factuality annotations from SmolDoc in controlled adaptation experiments, where we train models on low-resource language translations and then evaluate how factual inaccuracies in the training data affect their downstream question-answering task.
 
-Our key novelty lies in combining factually annotated multilingual data, LLM-based question generation from this data, and LLM-as-a-judge evaluation into a single pipeline. We introduce a reproducible benchmark to quantify the contamination of truthness, essentially how exposure to misinformation during adaptation propagates through a model’s layers (and reasoning, if available). Additionally, we aim to explore the effects of the model size, target language, and adaptation strategy (ICL, LoRA and SFT) on factually incorrect data. Furthermore, we see if a model performs the same regardless of the adaptation technique and whether the performance on factuality-aware tasks has degraded.
+Our key novelty lies in combining factually annotated multilingual data, LLM-based question generation from this data, and LLM-as-a-judge evaluation into a single pipeline. We introduce a reproducible benchmark to quantify the contamination of truthness, essentially how exposure to misinformation during adaptation propagates through a model’s layers (and reasoning, if available). Additionally, we aim to explore the effects of the model size, target language, and adaptation strategy (ICL, LoRA and SFT) on factually incorrect data.
 
 ## Update mirror
 
