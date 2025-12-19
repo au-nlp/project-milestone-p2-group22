@@ -113,6 +113,18 @@ class OpenAIChatter(LLMChatter):
         model_name: str = "gpt-5-mini",
         effort_level: ReasoningEffort = "medium",
     ):
+        # Lazy init: do NOT read .env or create clients here.
+        self.client: OpenAI | None = None
+        self.model_name = model_name
+
+        if effort_level not in {"low", "medium", "high"}:
+            raise ValueError("effort_level must be one of: 'low', 'medium', 'high'")
+        self.effort_level: ReasoningEffort = effort_level
+
+    def _ensure_client(self):
+        if self.client is not None:
+            return
+
         env = Dotenv()
         api_key = env.get("AZURE_KEY")
         endpoint = env.get("OPENAI_ENDPOINT")
@@ -124,15 +136,12 @@ class OpenAIChatter(LLMChatter):
             )
 
         self.client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
-        self.model_name = model_name
-        if effort_level not in {"low", "medium", "high"}:
-            raise ValueError("effort_level must be one of: 'low', 'medium', 'high'")
-        self.effort_level: ReasoningEffort = effort_level
 
     def chat(self, messages: list[dict[str, str]]) -> tuple[str, str | None]:
         """Send messages to the LLM and return the response (and reasoning summary if available).
 
         Implementation follows https://platform.openai.com/docs/guides/reasoning"""
+        self._ensure_client()
         response = self.client.responses.create(
             model=self.model_name,
             input=messages,
