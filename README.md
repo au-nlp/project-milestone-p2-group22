@@ -80,7 +80,8 @@ To run the notebooks you must
     and download `evaluation_all-model.pkl` and `deepseek-r1_8b_answers-baseline-icl_cache.pkl`. They contain a cached version of our LLM experiments. They must be placed in the directory `data/`. This way, you do not have to wait for or run any LLMs.
 3. (or)
     - set up the environment keys (*Azure* most importantly)
-    - Ollama with the models used: `gemma3:4b`, `llama3:8b` and `deepseek-r1:8b`
+        - Get the endpoint and key from Microsoft Foundry at [ai.azure.com](https://ai.azure.com) and set `AZURE_KEY` and `AZURE_ENDPOINT` in [.env](./.env) (copy `.env.example` to `.env`). You can find more information at [ai.azure.com/doc](https://ai.azure.com/doc/azure/ai-foundry/openai/supported-languages?pivots=programming-language-python&tid=ed1ce1a6-6206-4fd3-bfdb-853a46e745dd#authentication). Make sure `gpt-5-mini` has been deployed in your project.
+    - [Ollama](https://ollama.com/) with the models used: `gemma3:4b`, `llama3:8b` and `deepseek-r1:8b`.
 
 Use either `conda` or a normal virtual environment to set up a proper development environment to  use for this project.
 
