@@ -28,7 +28,7 @@ def block_at_least_sec(n: int, start_time: float | None = None):
     Args:
         n (int): Maximum number of seconds to block.
         start_time (float, optional): Start time to calculate elapsed time from. Defaults to None,
-        which means the current time is used and it will then block for n seconds.
+        which means the current time is used, and it will then block for n seconds.
     """
 
     if start_time is None:
