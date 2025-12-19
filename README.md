@@ -10,24 +10,105 @@ The group members: Berg, Mikkel Skafsgaard; Jehøj-Krogager, Nikolaj; Yildirim, 
 
 The dataset being used: SMOL
 
-Department of Computer Science, Aarhus University, 2025.
+Department of Computer Science, Aarhus University, 2025
 
-We provide a `env.yaml` to setup a proper Python environment to use in this project with conda. To create it run
+*For the sake of transparency, we have also uploaded the project report to our repository. See [report.pdf](./report.pdf).*
+
+## Abstract
+
+This project explores how factual inaccuracies in training data influence the reliability and reasoning of multipurpose LLMs. Using the factuality annotated SmolDoc dataset from *Smol* (Caswell et. al 2025) we investigate whether exposure to factually incorrect text (documents) via various adaptation techniques (ICL, SFT, and LoRA) can ``poison'' a LLM's general capabilities like question-answering. SmolDoc is a dataset with document-level translations from English to over 100 low-resource languages with additional annotations on whether a document is factually correct or not. We focus on the English to Swahili documents. Our goal is to analyze how models adapted for machine translation (MT), where factuality is not a concern, behave when later tasked with question answering, where factuality is essential. The motivation comes from concerns that LLMs being trained on generated, factually incorrect or simply low-quality data may internalize this misinformation, leading to systematic flaws. We show that tasks like MT can ripple errors into larger failures in reasoning and trust. By combining factuality-aware data processing, question generation, and LLM-as-a-Judge evaluation, we aim to highlight the vulnerability of LLMs to data quality issues and the critical need for factuality-aware training practices.
+
+## Contribution Statement
+
+This project was carried out by Mikkel Skafsgaard Berg, Nikolaj Jehøj-Krogager, and Michel Yildirim.
+
+- Mikkel was primarily responsible for [… e.g., dataset preprocessing, model implementation, training pipeline …].
+- Nikolaj was primarily responsible for [… e.g., literature review, experimental setup, evaluation, visualization …].
+- Michel was primarily responsible for [… e.g., fine-tuning implementations, notebook structure etc. …].
+
+All authors contributed equally to project design, result interpretation, and writing the report. All authors have read and approved the final manuscript and agree to the stated contributions.
+
+## Timeline and Milestones for P3
+
+This also serves as a list of updates since Milestone P2.
+
+- [x] Refinement and improved baseline
+    - [x] Add reasoning traces to question generation
+    - [x] Refine evaluation prompts (no follow-up questions, concise answers)
+    - [x] Re-run baseline: models without adaptation vs. with translation adaptation
+- [X] Adaptation strategy comparison - ICL vs. SFT vs. LoRA
+    - [X] Implement SFT and LoRA pipelines
+    - [X] Compare ICL vs. SFT vs. LoRA on existing model/language pairs
+    - [X] Evaluate using both True/False and 1-5 granular metrics
+- [X] Expanded Model Grid - Multiple model sizes and languages
+    - [X] Add more model sizes (e.g., 3B, 8B, ~~13B~~)
+    - [X] Test how model scale interacts with factual contamination across adaptation strategies
+    - [ ] Expand to more target languages (different scripts/regions)
+    - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
+- [X] P3 Documentation
+    - [X] Analysis
+    - [X] Discussion
+
+## A Tour of the Project
+
+The highlight of this project is in [main.ipynb](./src/main.ipynb), where we show the results. We got the answers from the adapted models in different files:
+
+- Baseline and ICL in `experiments/icl/*.ipynb`
+- LoRA and SFT in [sft-peft.ipynb](./experiments/sft-peft.ipynb) (model weights can be found at [Google Drive](https://drive.google.com/drive/folders/1pmmjX4UZ7eLzVTjAsjccjmx4yAI14yJM?usp=drive_link))
+    - Adaptation with LoRA happens in `experiments/peft/*.ipynb`
+    - Adaptation with SFT happens in `experiments/sft/*.ipynb`
+
+Many of the results are loaded in from our [GitLab Snippets](https://gitlab.au.dk/nlp-mnm/nlp-project/-/snippets). In `archive` we have stored some of the notebooks that have resulted in the final main notebook.
+
+We have a helper module that can be viewed in `src/helpers` (*remember to install it, if you want to run any of the notebooks*). Here we have
+
+- [llm_chat.py](./src/helpers/llm_chat.py): a chat framework, that makes it easier to chat with LLMs and switch between LLM providers (Ollama for selfhosting, and Azure AI Foundry for running larger LLMs in the cloud). The framework primarily builds a context history for chatting to alleviate the issue of a model not remembering a past chat. The chat can optionally be saved in a local cache and reloaded.
+- [pipeline.py](./src/helpers/pipeline.py): contains helper functions used in the pipeline.
+- [dotenv.py](./src/helpers/dotenv.py): used to get private keys and endpoints from `.env`.
+- [utils.py](./src/helpers/utils.py): more general helper functions for handling *Smol* and such.
+- [find_funny_stuff.py](./src/helpers/find_funny_stuff.py): used to explore the cache files (`*.pkl`) along with grep.
+
+That was the tour, but still, feel free to navigate through the repository. If you want to run anything, see the next section.
+
+## Setting up a Development Environment
+
+To run the notebooks you must
+
+1. Set up a proper Python Environment. See the later sections `Conda` or `Virtual Environment`.
+2. Download cache files
+    - See the [latest release here](https://gitlab.au.dk/nlp-mnm/nlp-project/-/releases/permalink/latest) 
+    and download `evaluation_all-model.pkl` and `deepseek-r1_8b_answers-baseline-icl_cache.pkl`. They contain a cached version of our LLM experiments. They must be placed in the directory `data/`. This way, you do not have to wait for or run any LLMs.
+3. (or)
+    - set up the environment keys (*Azure* most importantly)
+    - Ollama with the models used: `gemma3:4b`, `llama3:8b` and `deepseek-r1:8b`
+
+Use either `conda` or a normal virtual environment to set up a proper development environment to  use for this project.
+
+### Conda
+
+We provide a `env.yaml` to set up a proper Python environment to use in this project with conda. To create it run
 
 ```sh
 $ conda env create -f env.yaml
 ```
 
-and select the environment created (`nlp`). Then run
+and select the environment created (`nlp`). We provide a helper package named *helper* that **must be installed as well**. Install it by running the following in the root of the repository.
 
 ```sh
 $ (conda activate nlp)
-$ which pip # should give the one in conda!
-$ pip install --no-deps .
+(nlp) $ (which pip) # should give the one in conda!
+(nlp) $ pip install --no-deps .
 ```
 
-Another option is to use pip to set up a virtual environment with the packages needed.
-To be able to run the notebooks you should install this project as a pip module using
+### Virtual Environment
+
+Another option is to use a virtual environment with the packages needed. There are many different ways, so do the one you see fit. I like `uv`, which just is
+
+```shell
+$ uv sync
+```
+
+in the root. **Importantly** to be able to run the notebooks you should install this project as a pip module using
 
 ```sh
 $ python -m pip install .
@@ -35,135 +116,20 @@ $ python -m pip install .
 
 This is primarily to ensure that notebooks in _archived_ and _experiments_ can be run without too much path wrangling.
 
-## Abstract (P2)
-
-This project explores how factual inaccuracies in training data influence the reliability and reasoning of multi purpose
-LLMs. Using the factuality annotated SmolDoc dataset from the SMOL project we investigate whether exposure to factually
-incorrect text via various adaptation techniques (ICL, PEFT and SFT) can "poison" an LLM’s general capabilities like
-question-answering. SmolDoc is a dataset with document-level translations from English to over 100 low-resource
-languages with additional annotations on whether a document is factually correct or not. Our goal is to analyze how
-models adapted for machine translation (MT), where factuality is not a concern, behave when later tasked with question
-answering, where factuality is essential. The motivation comes from concerns that LLMs are being trained on generated,
-factually incorrect or simply low-quality data that will internalize misinformation, leading to systematic flaws. We
-show that tasks like MT can ripple errors into larger failures in reasoning and trust. By combining factuality-aware
-data processing, question generation, and LLM-as-a-Judge evaluation, we aim to highlight the vulnerability of LLMs to
-data quality issues and the critical need for factuality-aware training practices.
 
 ## Contributions and Novelty
 
-The project contributes a systematic framework for evaluating factual inaccuracies in training data introduced by
-adaptation techniques and how they might influence downstream reasoning in LLMs. While there is quite a bit of work on
-detection of hallucination and how to mitigate it, few studies investigate the effects of exposure to factually
-incorrect data during training on tasks that do not explicitly require factuality (such as MT) and how these errors
-later affect tasks that do demand factual correctness (such as question answering). Our pipeline bridges this gap by
-leveraging factuality annotations from SmolDoc in controlled adaptation experiments, where we train models on
-low-resource language translations and then evaluate how factual inaccuracies in the training data affect their
-downstream question-answering performance.
+The project contributes a systematic framework for evaluating factual inaccuracies in training data introduced by adaptation techniques and how they might influence downstream reasoning in LLMs. While there is quite a bit of work on detection of hallucination and how to mitigate it, few studies investigate the effects of exposure to factually incorrect data during training on tasks that do not explicitly require factuality (such as MT) and how these errors later affect tasks that do demand factual correctness (such as question answering). Our pipeline bridges this gap by leveraging factuality annotations from SmolDoc in controlled adaptation experiments, where we train models on low-resource language translations and then evaluate how factual inaccuracies in the training data affect their downstream question-answering performance.
 
-Our key novelty lies in combining factually annotated multilingual data, LLM-based question generation from this data,
-and LLM-as-a-judge evaluation into a single pipeline. We introduce a reproducible benchmark to quantify the
-contamination of truthness, essentially how exposure to misinformation during adaptation propagates through a model’s
-layers (and reasoning, if available). Additionally, we aim to explore the effects of the model size, target language,
-and adaptation strategy (ICL, PEFT and SFT) on factually incorrect data. Furthermore, we see if a model performs the
-same regardless of the adaptation technique and whether on factuality-aware tasks the performance has degraded.
-
-## Methods
-
-We adapt models for document-level translations from SmolDoc, partitioning the data by factuality annotations (correct,
-incorrect, mixed). We compare three model adaptation approaches: In-Context Learning (ICL), Supervised Fine-Tuning (
-SFT), and Parameter-Efficient Fine-Tuning (PEFT) using LoRA. [Note: currently for P2 we have Proof of Concept with ICL]
-
-For evaluation, we use slightly more powerful models to generate question-answer pairs from the SmolDoc documents that
-probe factual content. Adapted models are then evaluated on these questions using LLM-as-a-Judge assessments (and F1
-scores), with reasoning traces captured to identify failure patterns.
-
-This setup allows us to measure how factual contamination during translation adaptation affects subsequent
-question-answering performance across different model sizes, adaptation strategies, and target languages.
-
-Models we have used (and will attempt) for the MT adaptation are models such as Gemma3:4b, DeepSeek-R1:8b and similar
-models. The more powerful models we are planning to use for LLM-as-a-Judge and question generation will be models such
-as GPT-5 nano and mini variants, where the goal is to use a model that is strong in terms of _instruction following_,
-_hard
-prompts_, _semantics_ and general reasoning.
-
-## Timeline and Milestones for P3
-
-- [x] Refinement and improved baseline
-    - [x] Add reasoning traces to question generation
-    - [x] Refine evaluation prompts (no follow-up questions, concise answers)
-    - [x] Re-run baseline: models without adaptation vs. with translation adaptation
-- [ ] Adaptation strategy comparison - ICL vs. SFT vs. PEFT
-    - [ ] Implement SFT and PEFT (LoRA) pipelines
-    - [ ] Compare ICL vs. SFT vs. PEFT on existing model/language pairs
-    - [ ] Evaluate using both True/False and 1-5 granular metrics
-- [ ] Expanded Model Grid - Multiple model sizes and languages
-    - [ ] Add more model sizes (e.g., 3B, 8B, 13B)
-    - [ ] Test how model scale interacts with factual contamination across adaptation strategies
-    - [ ] Expand to more target languages (different scripts/regions)
-    - [ ] Run full grid: model sizes x languages x adaptation strategies x factuality conditions
-- [ ] P3 Documentation
-    - [ ] Analysis
-    - [ ] Generate comparison plots across all experimental conditions
-
-### Project Timeline
-
-| Week       | Focus                            |
-|------------|----------------------------------|
-| **Week 1** | Baseline refinement              |
-| **Week 2** | Adaptation strategy comparison   |
-| **Week 3** | Expanded model and language grid |
-| **Week 4** | Analysis and plots               |
-| **Week 5** | Report writing                   |
-| **Week 6** | Buffer & finalization            |
-
-# Appendix
-
-## Evaluation
-
-### Evaluation Metric
-
-**Granular (1–5 Scale)**
-
-| Score | Description                                                  |
-|-------|--------------------------------------------------------------|
-| **1** | The answer is completely incorrect or irrelevant.            |
-| **2** | The answer has significant inaccuracies or omissions.        |
-| **3** | The answer is partially correct but lacks important details. |
-| **4** | The answer is mostly correct with minor inaccuracies.        |
-| **5** | The answer is completely correct and comprehensive.          |
-
-**True / False Evaluation**
-
-- **True:** The answer is factually correct.
-- **False:** The answer is not factually correct.
-
----
-
-### Evaluation – Data Exposure
-
-- How does the model perform without the fake translation task?
-    - Initial results indicate that it performs worse: However that is only because it asks questions to be more
-      specific, which is then scored as very bad. The prompt should be refined such that
-        - … ask no questions back
-        - … give concise answer
-- How does the model perform *with* the fake translation task?
-    - *(Results and comparison to be added after evaluation.)*
-
----
-
-### **Evaluation – Model**
-
-![Different models](assets/eval-model.png)
+Our key novelty lies in combining factually annotated multilingual data, LLM-based question generation from this data, and LLM-as-a-judge evaluation into a single pipeline. We introduce a reproducible benchmark to quantify the contamination of truthness, essentially how exposure to misinformation during adaptation propagates through a model’s layers (and reasoning, if available). Additionally, we aim to explore the effects of the model size, target language, and adaptation strategy (ICL, LoRA and SFT) on factually incorrect data. Furthermore, we see if a model performs the same regardless of the adaptation technique and whether the performance on factuality-aware tasks has degraded.
 
 ## Update mirror
 
 We develop on the AU GitLab instance. This course requires our work to be on
 GitHub, so we have set up a mirror, but we need to manually push the changes.
-We do not have access to the settings, such that it could be automated. On
-e.g. Forgejo that is possible. You should be in the "extra" repository (see
+You should be in the "extra" repository (see
 [docs.github.com](https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository#mirroring-a-repository-in-another-location)
-for more information), which
-in my case is `nlp_backup` and run
+for more information), which in my case is `nlp_backup` and run
 
 ```
 $ git fetch -p origin
