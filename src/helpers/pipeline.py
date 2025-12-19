@@ -190,13 +190,18 @@ def assess_response_quality(
 
 
 def add_target_documents(questions: pd.DataFrame, smoldoc: pd.DataFrame):
+    """
+    Merges source and target document information from the SmolDoc dataset into a questions DataFrame.
+
+    The srcs column is re-inserted, since it already exists in questions, which comes from a CSV file, so when it is loaded to a DataFrame it has the type of string, not list as we expect. Therefore we first remove it, then merge the correct columns from smoldoc, and finally re-insert them at the correct positions.
+
+    :param questions: DataFrame containing questions and metadata.
+    :param smoldoc: DataFrame containing the original SmolDoc data with 'id', 'srcs', and 'trgs' among others.
+    :return: A copy of the questions DataFrame with 'srcs' and 'trgs' columns inserted.
+    """
     questions = questions.copy()
     questions.pop("srcs")
-    questions = questions.merge(
-        smoldoc[["id", "srcs", "trgs"]],
-        on="id",
-        how="left"
-    )
+    questions = questions.merge(smoldoc[["id", "srcs", "trgs"]], on="id", how="left")
     trgs = questions.pop("trgs")
     srcs = questions.pop("srcs")
     questions.insert(4, "srcs", srcs)

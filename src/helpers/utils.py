@@ -352,6 +352,11 @@ def barchart_smoldoc_documents(datasets_dict: DatasetDict):
 
 
 def show_samples(configs: dict[str, pd.DataFrame], n: int):
+    """
+    Renders the 'n' first entries of the provided dataframes in HTML.
+    :param configs: A dictionary of dataframes
+    :param n: The number of entries to render, per dictionary
+    """
     for model_method, df in configs.items():
         model, method = model_method.split("_")
         display(Markdown("---"))
